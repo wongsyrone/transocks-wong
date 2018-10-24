@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.7.2)
+project(transocks-wong)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+add_executable(transocks-wong
+        src/transocks.c src/util.c src/util.h)
+find_package(Libevent2 REQUIRED)
+target_link_libraries(transocks-wong ${LIBEVENT2_LIBRARIES})
+include_directories(${LIBEVENT2_INCLUDE_DIR})
