@@ -1,3 +1,7 @@
+# Jetbrains
+.idea/
+*.iml
+
 # Prerequisites
 *.d
 
