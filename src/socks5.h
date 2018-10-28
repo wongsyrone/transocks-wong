@@ -5,11 +5,16 @@
 #ifndef TRANSOCKS_WONG_SOCKS5_H
 #define TRANSOCKS_WONG_SOCKS5_H
 
+#include <unistd.h>
+
+#include "context.h"
+#include "log.h"
+#include "util.h"
+
 #define SOCKS5_VERSION 0x05
 #define SOCKS5_METHOD_NOAUTH 0x00
 #define SOCKS5_METHOD_UNACCEPTABLE 0xff
 
-// see also: https://www.ietf.org/rfc/rfc1928.txt
 #define SOCKS5_CMD_CONNECT 0x01
 #define SOCKS5_CMD_BIND 0x02
 #define SOCKS5_CMD_UDP_ASSOCIATE 0x03
@@ -29,13 +34,15 @@
 #define SOCKS5_REP_ADDRTYPE_NOT_SUPPORTED 0x08
 #define SOCKS5_REP_FF_UNASSIGNED 0x09
 
-struct method_select_request {
+#pragma (push_macro(""))
+
+struct socks_method_select_request {
     unsigned char ver;
     unsigned char nmethods;
     unsigned char methods[0];
 } __attribute__((packed, aligned(1)));
 
-struct method_select_response {
+struct socks_method_select_response {
     unsigned char ver;
     unsigned char method;
 } __attribute__((packed, aligned(1)));
@@ -54,4 +61,7 @@ struct socks5_response {
     unsigned char atyp;
 } __attribute__((packed, aligned(1)));
 
+
+
+void transocks_start_connect_relay(transocks_client *client);
 #endif //TRANSOCKS_WONG_SOCKS5_H
