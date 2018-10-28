@@ -15,14 +15,18 @@
 #include "util.h"
 #include "log.h"
 
-// TODO: add all state
+// TODO: verify client states
 enum transocks_client_state {
     client_new,
     client_relay_connected,
-    client_socks5_client_request_sent,
-    client
+    client_socks5_method_sent,
+    client_socks5_auth_sent,
+    client_socks5_request_sent,
+    client_socks5_skip_domain,
+    client_socks5_skip_address,
+    client_pumping_data,
     client_error,
-    client_MAX
+    client_INVALID
 };
 
 enum transocks_pump_method {

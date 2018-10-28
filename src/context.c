@@ -125,7 +125,7 @@ void transocks_client_free(transocks_client **ppclient) {
     pClient->clientaddr=NULL;
     free(pClient->destaddr);
     pClient->destaddr=NULL;
-    pClient->client_state = client_MAX;
+    pClient->client_state = client_INVALID;
     if (pClient->clientFd > -1) {
         close(pClient->clientFd);
         pClient->clientFd = -1;

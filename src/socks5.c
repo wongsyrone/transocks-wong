@@ -4,12 +4,18 @@
 
 #include "socks5.h"
 
+// TODO: state machine
+static void transocks_next_state(transocks_client *client) {
+
+}
+
 static void relay_connect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *client = (transocks_client *)userArg;
     if (bevs & BEV_EVENT_CONNECTED) {
         /* We're connected Ordinarily we'd do
            something here, like start reading or writing. */
-        client->client_state =
+        client->client_state = client_relay_connected;
+        //TODO
     } else if (bevs & BEV_EVENT_ERROR) {
         /* An error occured while connecting. */
         LOGE("connect relay error");
@@ -57,3 +63,26 @@ void transocks_start_connect_relay(transocks_client *client) {
     transocks_client_free(&client);
 
 }
+
+
+
+
+/*
+
+Submit a SOCKS5 Hello
+con->status = SOCKS5_HELLO;
+
+Set a timeout
+timeout_set (&con->connect_timeout, &client_connect_timeout, con);
+conn_timeout_tv.tv_sec = connect_timeout;
+conn_timeout_tv.tv_usec = 0;
+timeout_add (&con->connect_timeout, &conn_timeout_tv);
+
+Send HELLO and wait for a 2 byte response
+bufferevent_setwatermark (con->ep[EI_SERVER].ev, EV_READ, 2, READ_BUFFER);
+bufferevent_write (con->ep[EI_SERVER].ev, "\x05\x01\x00", 3);
+bufferevent_enable (con->ep[EI_SERVER].ev, EV_READ);
+
+bufferevent_setcb (ev, &svr_rdy_read, 0, &be_error, con);
+
+*/
