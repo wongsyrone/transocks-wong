@@ -5,7 +5,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 add_executable(transocks-wong
-        src/transocks.c src/util.c src/util.h src/socks5.h src/log.c src/log.h src/context.c src/context.h src/listener.c src/listener.h src/signal.c src/signal.h src/socks5.c)
+        src/transocks.c src/util.c src/util.h src/socks5.h src/log.c src/log.h src/context.c src/context.h src/listener.c src/listener.h src/signal.c src/signal.h src/socks5.c src/pump.c src/pump.h src/bufferpump.c src/bufferpump.h src/splicepump.c src/splicepump.h)
 find_package(Libevent2 REQUIRED)
 target_link_libraries(transocks-wong ${LIBEVENT2_LIBRARIES})
 include_directories(${LIBEVENT2_INCLUDE_DIR})

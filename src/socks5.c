@@ -4,18 +4,24 @@
 
 #include "socks5.h"
 
-// TODO: state machine
-static void transocks_next_state(transocks_client *client) {
 
+static void socks_start_handshake(transocks_client *client) {
+    //TODO
+    struct bufferevent *relay_bev = client->relay_bev;
+    bufferevent_setwatermark(relay_bev, EV_READ, 2, TRANSOCKS_BUFSIZE);
+    bufferevent_write (relay_bev, "\x05\x01\x00", 3);
+    bufferevent_setcb(relay_bev, on_read, NULL, on_handshaking_event, client);
+    bufferevent_disable(relay_bev, EV_WRITE);
+    bufferevent_enable (relay_bev, EV_READ);
 }
 
 static void relay_connect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *client = (transocks_client *)userArg;
     if (bevs & BEV_EVENT_CONNECTED) {
-        /* We're connected Ordinarily we'd do
-           something here, like start reading or writing. */
+        /* We're connected */
         client->client_state = client_relay_connected;
-        //TODO
+        socks_start_handshake(client);
+        return;
     } else if (bevs & BEV_EVENT_ERROR) {
         /* An error occured while connecting. */
         LOGE("connect relay error");
@@ -49,13 +55,16 @@ void transocks_start_connect_relay(transocks_client *client) {
         LOGE("bufferevent_socket_new");
         goto fail;
     }
-
+    client->relay_bev = relay_bev;
 
     bufferevent_setcb(relay_bev, NULL, NULL, relay_connect_eventcb, client);
     if (bufferevent_socket_connect(relay_bev, (const struct sockaddr *)(env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");
         goto fail;
     }
+
+
+    return;
 
     fail:
     if (relay_fd > -1) close(relay_fd);
@@ -71,12 +80,6 @@ void transocks_start_connect_relay(transocks_client *client) {
 
 Submit a SOCKS5 Hello
 con->status = SOCKS5_HELLO;
-
-Set a timeout
-timeout_set (&con->connect_timeout, &client_connect_timeout, con);
-conn_timeout_tv.tv_sec = connect_timeout;
-conn_timeout_tv.tv_usec = 0;
-timeout_add (&con->connect_timeout, &conn_timeout_tv);
 
 Send HELLO and wait for a 2 byte response
 bufferevent_setwatermark (con->ep[EI_SERVER].ev, EV_READ, 2, READ_BUFFER);

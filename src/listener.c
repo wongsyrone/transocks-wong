@@ -20,7 +20,8 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
                         struct sockaddr *srcAddr, int srcSockLen, void *userArg) {
     transocks_global_env *env = (transocks_global_env *)userArg;
     socklen_t typedSrcSockLen = (socklen_t)srcSockLen;
-    transocks_client *client = transocks_client_new(env, pumpmethod_UNSPECIFIED);
+
+    transocks_client *client = transocks_client_new(env);
     if (client == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
@@ -43,6 +44,8 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
             (const struct sockaddr *)env->bindAddr, env->bindAddrLen);
 
+    client->clientaddrlen = typedSrcSockLen;
+    memcpy((void *)(client->clientaddr), (void *)srcAddr, typedSrcSockLen);
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
             (const struct sockaddr *)srcAddr, typedSrcSockLen);
 
@@ -60,6 +63,16 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     client->clientFd = clientFd;
     client->global_env = env;
 
+    struct bufferevent *client_bev = bufferevent_socket_new(env->eventBaseLoop,
+                                                           clientFd, BEV_OPT_CLOSE_ON_FREE);
+
+    if (client_bev == NULL) {
+        LOGE("bufferevent_socket_new");
+        goto fail;
+    }
+
+    client->client_bev = client_bev;
+
     // start connecting SOCKS5 relay
 
     transocks_start_connect_relay(client);
@@ -67,6 +80,7 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
 
     fail:
     if (clientFd > -1) close(clientFd);
+    if (client_bev!=NULL) bufferevent_free(client_bev);
     if (client != NULL) transocks_client_free(&client);
 }
 

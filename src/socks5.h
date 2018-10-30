@@ -34,12 +34,23 @@
 #define SOCKS5_REP_ADDRTYPE_NOT_SUPPORTED 0x08
 #define SOCKS5_REP_FF_UNASSIGNED 0x09
 
-#pragma (push_macro(""))
+
+#define  MAXHOSTNAMELEN    (255 + 1)      /* socks5: 255, +1 for len. */
+
+union socks_addr_t {
+    char domain[MAXHOSTNAMELEN];
+    struct in_addr ipv4;
+    struct {
+        struct in6_addr ip;
+        uint32_t scopeid;
+    } ipv6;
+} __attribute__((packed, aligned(1)));
+
 
 struct socks_method_select_request {
     unsigned char ver;
     unsigned char nmethods;
-    unsigned char methods[0];
+    unsigned char methods[255];
 } __attribute__((packed, aligned(1)));
 
 struct socks_method_select_response {
@@ -47,21 +58,24 @@ struct socks_method_select_response {
     unsigned char method;
 } __attribute__((packed, aligned(1)));
 
-struct socks5_request {
+struct socks_request_header {
     unsigned char ver;
     unsigned char cmd;
     unsigned char rsv;
-    unsigned char atyp;
 } __attribute__((packed, aligned(1)));
 
-struct socks5_response {
+struct socks_response_header {
     unsigned char ver;
     unsigned char rep;
     unsigned char rsv;
-    unsigned char atyp;
 } __attribute__((packed, aligned(1)));
 
-
+struct socks_host_t {
+    unsigned char atyp;
+    union socks_addr_t addr;
+    uint16_t port;
+} __attribute__((packed, aligned(1)));
 
 void transocks_start_connect_relay(transocks_client *client);
+
 #endif //TRANSOCKS_WONG_SOCKS5_H

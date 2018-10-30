@@ -38,8 +38,12 @@
 /* '[' + INET6_ADDRSTRLEN + ']' + ':' + "65535" + NUL */
 #define TRANSOCKS_INET_ADDRPORTSTRLEN (1 + INET6_ADDRSTRLEN + 1 + 1 + TRANSOCKS_INET_PORTSTRLEN + 1)
 
+#define TRANSOCKS_SIZEOF_ARRAY(arr)        (sizeof(arr) / sizeof(arr[0]))
+#define TRANSOCKS_FOREACH(ptr, array)      for (ptr = array; ptr < array + TRANSOCKS_SIZEOF_ARRAY(array); ptr++)
+#define TRANSOCKS_FOREACH_REVERSE(ptr, array) for (ptr = array + TRANSOCKS_SIZEOF_ARRAY(array) - 1; ptr >= array; ptr--)
 #define TRANSOCKS_UNUSED(obj) ((void)obj)
 
+#define TRANSOCKS_BUFSIZE (4096)
 
 enum {
     GETOPT_VAL_LISTENERADDRPORT,
