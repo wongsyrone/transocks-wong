@@ -11,6 +11,10 @@
 #include "log.h"
 #include "util.h"
 
+//Memory alignment settings(Part 1)
+#pragma pack(push) //Push current alignment to stack.
+#pragma pack(1) //Set alignment to 1 byte boundary.
+
 #define SOCKS5_VERSION 0x05
 #define SOCKS5_METHOD_NOAUTH 0x00
 #define SOCKS5_METHOD_UNACCEPTABLE 0xff
@@ -34,25 +38,16 @@
 #define SOCKS5_REP_ADDRTYPE_NOT_SUPPORTED 0x08
 #define SOCKS5_REP_FF_UNASSIGNED 0x09
 
-union socks_addr_t {
-    struct in_addr ipv4;
-    struct {
-        struct in6_addr ip;
-        uint32_t scopeid;
-    } ipv6;
-} __attribute__((packed, aligned(1)));
-
-
 struct socks_method_select_request {
     unsigned char ver;
     unsigned char nmethods;
     unsigned char methods[1];
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_method_select_response {
     unsigned char ver;
     unsigned char method;
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_request_ipv4 {
     unsigned char ver;
@@ -61,7 +56,7 @@ struct socks_request_ipv4 {
     unsigned char atyp;
     struct in_addr addr;
     uint16_t port;
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_request_ipv6 {
     unsigned char ver;
@@ -70,7 +65,7 @@ struct socks_request_ipv6 {
     unsigned char atyp;
     struct in6_addr addr;
     uint16_t port;
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_response_ipv4 {
     unsigned char ver;
@@ -79,7 +74,7 @@ struct socks_response_ipv4 {
     unsigned char atyp;
     struct in_addr addr;
     uint16_t port;
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_response_ipv6 {
     unsigned char ver;
@@ -88,14 +83,18 @@ struct socks_response_ipv6 {
     unsigned char atyp;
     struct in6_addr addr;
     uint16_t port;
-} __attribute__((packed, aligned(1)));
+};
 
 struct socks_response_header {
     unsigned char ver;
     unsigned char rep;
     unsigned char rsv;
     unsigned char atyp;
-} __attribute__((packed, aligned(1)));
+};
+
+
+//Memory alignment settings(Part 2)
+#pragma pack(pop) //Restore original alignment from stack.
 
 
 void transocks_start_connect_relay(transocks_client **ppclient);
