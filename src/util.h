@@ -48,10 +48,12 @@
 enum {
     GETOPT_VAL_LISTENERADDRPORT,
     GETOPT_VAL_SOCKS5ADDRPORT,
+    GETOPT_VAL_PUMPMETHOD,
     GETOPT_VAL_HELP
 };
 void generate_sockaddr_port_str (char *, size_t, const struct sockaddr *, socklen_t);
 int apply_tcp_keepalive(int);
+int apply_tcp_nodelay(int);
 int setnonblocking(int, bool);
 int getorigdst(int, struct sockaddr_storage *, socklen_t *);
 bool is_would_block(int);

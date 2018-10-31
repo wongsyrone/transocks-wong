@@ -58,6 +58,16 @@ int apply_tcp_keepalive(int fd) {
     }
     return 0;
 }
+
+int apply_tcp_nodelay(int fd) {
+    if (fd < 0) return -1;
+    int on = 1;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&on, sizeof(on)) < 0) {
+        LOGE_ERRNO("fail to set TCP_NODELAY");
+        return -1;
+    }
+    return 0;
+}
 int setnonblocking(int fd, bool isenable) {
     if (fd < 0) return -1;
     int flags = fcntl(fd, F_GETFL);
@@ -149,6 +159,7 @@ void print_help() {
     fprintf(stdout, "\t Address must in this format:\n");
     fprintf(stdout, "\t\t - [IPv6Address]\n");
     fprintf(stdout, "\t\t - IPv4Address\n");
+    fprintf(stdout, "\t --pump-method bufferpump/splicepump\n");
 }
 
 

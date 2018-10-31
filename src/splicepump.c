@@ -6,30 +6,20 @@
 
 // TODO
 
-const transocks_pump transocks_splicepump_ops;
-
-static transocks_splicepump splicePump;
+transocks_pump transocks_splicepump_ops;
 
 
-static int transocks_splicepump_start_pump() {
-    return 0;
-}
-static int transocks_splicepump_init(transocks_client *client) {
-    transocks_splicepump_ops.user_arg = client;
 
+static int transocks_splicepump_start_pump(transocks_client **ppclient) {
 
     return 0;
 }
 
-static void transocks_splicepump_free(transocks_client **ppclient) {
-    transocks_client *pclient = *ppclient;
-    if (pclient == NULL) return;
+static void transocks_splicepump_free() {
 
 }
 
-const transocks_pump transocks_splicepump_ops = {
+transocks_pump transocks_splicepump_ops = {
         .name = PUMPMETHOD_SPLICE,
-        .init_fn = transocks_splicepump_init,
-        .free_fn = transocks_splicepump_free,
         .start_pump_fn = transocks_splicepump_start_pump,
 };

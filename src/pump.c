@@ -16,46 +16,28 @@ static transocks_pump *transocks_pumps[] = {
         &transocks_bufferpump_ops,
 };
 
-int transocks_pump_init(char *name, transocks_client *client) {
-    transocks_pump **ppump;
-    int ret;
-    TRANSOCKS_FOREACH(ppump, transocks_pumps) {
-        if (!strcmp(name, (*ppump)->name)) {
-            if ( (*ppump)->init_fn != NULL ) {
-                ret = (*ppump)->init_fn(client);
-                if (ret != 0) return ret;
+static transocks_pump *pumpMethodImpl = NULL;
 
-            }
-        }
-
-    }
-    LOGE("cannot find pump impl");
-    return -1;
-}
-int transocks_start_pump(char *name) {
+int transocks_pump_init(transocks_global_env *env) {
     transocks_pump **ppump;
-    int ret;
     TRANSOCKS_FOREACH(ppump, transocks_pumps) {
-        if (!strcmp(name, (*ppump)->name)) {
-            if ( (*ppump)->start_pump_fn != NULL ) {
-                ret = (*ppump)->start_pump_fn();
-                return ret;
-            }
+        if (!strcmp(env->pumpMethodName, (*ppump)->name)) {
+            pumpMethodImpl = *ppump;
+            return 0;
         }
     }
-    LOGE("cannot find pump impl");
+    LOGE("cannot find pump impl %s", env->pumpMethodName);
     return -1;
 }
 
-void transocks_pump_free(char *name, transocks_client **client) {
-    transocks_pump **ppump;
-    TRANSOCKS_FOREACH(ppump, transocks_pumps) {
-        if (!strcmp(name, (*ppump)->name)) {
-            if ( (*ppump)->free_fn != NULL ) {
-                (*ppump)->free_fn(client);
-                return;
-            }
-        }
+int transocks_start_pump(transocks_client **ppclient) {
+    if (pumpMethodImpl == NULL || pumpMethodImpl->start_pump_fn == NULL)
+        return -1;
+
+    if (pumpMethodImpl->start_pump_fn(ppclient) != 0) {
+        LOGE("fail to start pump %s", pumpMethodImpl->name);
+        return -1;
     }
-    LOGE("cannot find pump impl");
+    (*ppclient)->client_state = client_pumping_data;
+    return 0;
 }

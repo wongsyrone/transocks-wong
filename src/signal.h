@@ -6,9 +6,8 @@
 #define TRANSOCKS_WONG_SIGNAL_H
 
 #include <signal.h>
-#include "context.h"
 
-#include <event2/event.h>
+#include "context.h"
 
 
 int signal_init(transocks_global_env *);

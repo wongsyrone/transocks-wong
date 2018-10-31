@@ -11,6 +11,7 @@
 #include <event2/event.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
+#include <event2/buffer.h>
 
 #include "util.h"
 #include "log.h"
@@ -40,6 +41,7 @@ typedef struct transocks_client_t transocks_client;
 /* detailed declaration */
 
 typedef struct transocks_global_env_t {
+    char *pumpMethodName;               // pump method name
     struct sockaddr_storage *bindAddr;  // listener addr
     struct sockaddr_storage *relayAddr; // SOCKS5 server addr
     socklen_t bindAddrLen;              // listener addr socklen

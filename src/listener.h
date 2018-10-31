@@ -7,8 +7,6 @@
 
 #include <unistd.h>
 
-#include <event2/listener.h>
-
 #include "context.h"
 #include "util.h"
 #include "log.h"
