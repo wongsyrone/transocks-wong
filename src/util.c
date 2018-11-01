@@ -88,6 +88,23 @@ int setnonblocking(int fd, bool isenable) {
 }
 
 
+int createpipe(int *readEndFd, int *writeEndFd) {
+    int pipefds[2];
+    int ret = pipe(pipefds);
+    if (ret == -1) {
+        LOGE_ERRNO("pipe");
+        return -1;
+    }
+    if (setnonblocking(pipefds[0], true) != 0) {
+        return -1;
+    }
+    if (setnonblocking(pipefds[1], true) != 0) {
+        return -1;
+    }
+    *readEndFd = pipefds[0];
+    *writeEndFd = pipefds[1];
+    return 0;
+}
 int getorigdst(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen) {
     socklen_t v6_len = sizeof(struct sockaddr_in6);
     socklen_t v4_len = sizeof(struct sockaddr_in);
@@ -107,8 +124,8 @@ int getorigdst(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen) {
     return 0;
 }
 
-bool is_would_block(int err_no) {
-    return err_no == EAGAIN || err_no == EWOULDBLOCK;
+bool is_retriable(int err_no) {
+    return err_no == EAGAIN || err_no == EWOULDBLOCK || err_no == EINTR;
 }
 
 bool validatePort(struct sockaddr_storage *ss) {

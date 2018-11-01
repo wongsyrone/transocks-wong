@@ -5,11 +5,9 @@
 #ifndef TRANSOCKS_WONG_SPLICEPUMP_H
 #define TRANSOCKS_WONG_SPLICEPUMP_H
 
-#include <unistd.h>
-
+#include "util.h"
 #include "context.h"
 #include "log.h"
-#include "util.h"
 #include "pump.h"
 
 // used when relaying data between client and relay socket
@@ -21,6 +19,7 @@ typedef struct transocks_splicepipe_t {
     int pipe_readfd;   // pass pointer to read fd, pipe2() reads these two fds
     int pipe_writefd;
     size_t pipe_size;
+    ssize_t data_in_pipe;
 } transocks_splicepipe;
 
 typedef struct transocks_splicepump_t {
@@ -28,7 +27,8 @@ typedef struct transocks_splicepump_t {
     struct event *client_write_ev;
     struct event *relay_read_ev;
     struct event *relay_write_ev;
-    struct transocks_splicepipe_t splice_pipe;
+    struct transocks_splicepipe_t inbound_pipe;
+    struct transocks_splicepipe_t outbound_pipe;
 } transocks_splicepump;
 
 

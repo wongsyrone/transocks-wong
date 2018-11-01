@@ -64,6 +64,7 @@ typedef struct transocks_client_t {
     socklen_t destaddrlen;                 // accepted client destination addr socklen
     struct bufferevent *client_bev; // client output -> relay input
     struct bufferevent *relay_bev;  // relay output -> client input
+    void *user_arg;
     enum transocks_client_state client_state;
     transocks_shutdown_how_t client_shutdown_how;
     transocks_shutdown_how_t relay_shutdown_how;

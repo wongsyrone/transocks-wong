@@ -14,7 +14,10 @@ static void socks_send_method_selection(transocks_client **);
 
 
 
-
+/*
+ * We assume socks5 server are listening on the loopback interface
+ * thus treats any EOF as error
+ */
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     if ((bevs & BEV_EVENT_EOF) == BEV_EVENT_EOF
@@ -171,7 +174,8 @@ static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *u
         return;
     } else if (bevs & BEV_EVENT_ERROR) {
         /* An error occured while connecting. */
-        LOGE("connect relay error");
+        int err = EVUTIL_SOCKET_ERROR();
+        LOGE("connect relay %d (%s)", err, evutil_socket_error_to_string(err));
         transocks_client_free(ppclient);
     }
 }

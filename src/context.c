@@ -112,6 +112,7 @@ void transocks_client_free(transocks_client **ppclient) {
         close(pClient->relayFd);
         pClient->relayFd = -1;
     }
+    pClient->user_arg = NULL;
     free(pClient);
     *ppclient = NULL;
 }

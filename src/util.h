@@ -13,6 +13,8 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -54,9 +56,10 @@ enum {
 void generate_sockaddr_port_str (char *, size_t, const struct sockaddr *, socklen_t);
 int apply_tcp_keepalive(int);
 int apply_tcp_nodelay(int);
+int createpipe(int *readfd, int *writefd);
 int setnonblocking(int, bool);
 int getorigdst(int, struct sockaddr_storage *, socklen_t *);
-bool is_would_block(int);
+bool is_retriable(int);
 bool validatePort(struct sockaddr_storage *);
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
 void print_help(void);
