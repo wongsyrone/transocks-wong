@@ -39,9 +39,9 @@ void transocks_global_env_free(transocks_global_env **ppenv) {
         return;
     transocks_global_env *pEnv = *ppenv;
     if (pEnv == NULL) return;
-    if (pEnv->pumpMethodName!=NULL) {
+    if (pEnv->pumpMethodName != NULL) {
         free(pEnv->pumpMethodName);
-        pEnv->pumpMethodName=NULL;
+        pEnv->pumpMethodName = NULL;
     }
     if (pEnv->relayAddr != NULL) {
         free(pEnv->relayAddr);
@@ -92,15 +92,17 @@ void transocks_client_free(transocks_client **ppclient) {
     if (pClient == NULL) return;
 
     free(pClient->clientaddr);
-    pClient->clientaddr=NULL;
+    pClient->clientaddr = NULL;
     free(pClient->destaddr);
-    pClient->destaddr=NULL;
+    pClient->destaddr = NULL;
     pClient->client_state = client_INVALID;
     if (pClient->relay_bev != NULL) {
+        bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
         bufferevent_free(pClient->relay_bev);
         pClient->relay_bev = NULL;
     }
     if (pClient->client_bev != NULL) {
+        bufferevent_disable(pClient->client_bev, EV_READ | EV_WRITE);
         bufferevent_free(pClient->client_bev);
         pClient->client_bev = NULL;
     }

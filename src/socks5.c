@@ -87,7 +87,7 @@ static void socks_send_connect_request(transocks_client **ppclient) {
             req_ip4.rsv = 0x00;
             req_ip4.atyp = SOCKS5_ATYP_IPV4;
             req_ip4.port = sa_ip4->sin_port;
-            memcpy(&(req_ip4.addr), &(sa_ip4->sin_addr), sizeof(struct sockaddr_in));
+            memcpy(&(req_ip4.addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
             assert(sizeof(req_ip4) == 6 + 4);
             bufferevent_write(relay_bev, (const void *)&req_ip4, sizeof(req_ip4));
             break;
@@ -98,7 +98,7 @@ static void socks_send_connect_request(transocks_client **ppclient) {
             req_ip6.rsv = 0x00;
             req_ip6.atyp = SOCKS5_ATYP_IPV6;
             req_ip6.port = sa_ip6->sin6_port;
-            memcpy(&(req_ip6.addr), &(sa_ip6->sin6_addr), sizeof(struct sockaddr_in6));
+            memcpy(&(req_ip6.addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
             assert(sizeof(req_ip6) == 6 + 16);
             bufferevent_write(relay_bev, (const void *)&req_ip6, sizeof(req_ip6));
             break;

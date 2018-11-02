@@ -4,7 +4,7 @@
 
 #include <errno.h>
 #include <event2/buffer.h>
-#include "utils.h"
+
 #include "log.h"
 
 static const char* getprioname(int priority)
