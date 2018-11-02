@@ -188,7 +188,7 @@ int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_
 
 void print_help() {
     fprintf(stdout, "transocks-wong help:\n");
-    fprintf(stdout, "\t WARNING: data must be NATed to our listener endpoint");
+    fprintf(stdout, "\t WARNING: data must be NATed to our listener endpoint\n");
     fprintf(stdout, "\t --listener-addr   what address we are listening\n");
     fprintf(stdout, "\t --listener-port   what port we are listening\n");
     fprintf(stdout, "\t --socks5-addr     the SOCKS5 server address\n");
