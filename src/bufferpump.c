@@ -4,7 +4,14 @@
 
 #include "bufferpump.h"
 
-// TODO should check write EOF?
+// TODO
+
+/*
+ * read EOF: eventcb & (BEV_EVENT_READING | BEV_EVENT_EOF)
+ * write EOF: eventcb & (BEV_EVENT_ERROR | BEV_EVENT_WRITING) && errno == ECONNRESET
+ * strategy: alway enable EV_READ|EV_WRITE, check invariant at the beginning, if error occured
+ *           check shutdown_how and determine what to do next, retry or destroy
+ */
 
 transocks_pump transocks_bufferpump_ops;
 
@@ -150,28 +157,19 @@ static int transocks_bufferpump_start_pump(transocks_client **ppclient) {
     struct bufferevent *relay_bev = (*ppclient)->relay_bev;
     bufferevent_setwatermark(client_bev, EV_READ | EV_WRITE, 0, TRANSOCKS_BUFSIZE);
     bufferevent_setwatermark(relay_bev, EV_READ | EV_WRITE, 0, TRANSOCKS_BUFSIZE);
-    bufferevent_setcb(client_bev, transocks_client_readcb, transocks_client_writecb, transocks_client_eventcb,
-                      ppclient);
-    bufferevent_setcb(relay_bev, transocks_relay_readcb, transocks_relay_writecb, transocks_relay_eventcb, ppclient);
+    bufferevent_setcb(client_bev, transocks_client_readcb, transocks_client_writecb,
+                      transocks_client_eventcb, ppclient);
+    bufferevent_setcb(relay_bev, transocks_relay_readcb, transocks_relay_writecb,
+                      transocks_relay_eventcb, ppclient);
 
-    err = bufferevent_enable(client_bev, EV_READ);
+    err = bufferevent_enable(client_bev, EV_READ | EV_WRITE);
     if (err) {
         LOGE("client bufferevent_enable");
         return -1;
     }
-    err = bufferevent_disable(client_bev, EV_WRITE);
-    if (err) {
-        LOGE("client bufferevent_enable");
-        return -1;
-    }
-    err = bufferevent_enable(relay_bev, EV_READ);
+    err = bufferevent_enable(relay_bev, EV_READ | EV_WRITE);
     if (err) {
         LOGE("relay bufferevent_enable");
-        return -1;
-    }
-    err = bufferevent_disable(relay_bev, EV_WRITE);
-    if (err) {
-        LOGE("client bufferevent_enable");
         return -1;
     }
 

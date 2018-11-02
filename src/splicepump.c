@@ -11,6 +11,16 @@
 
 // TODO
 
+/*
+ * CONDITION: data_size_in_pipe and socket_can_keep_read_or_write
+ * read socket EOF: pipe not full && splice() == 0
+ * write pipe EOF: pipe is full(should not happen frequently, as long as we read from pipe as quick as possible)
+ * read pipe EOF: other side shutdown && pipe is empty(aka nothing to do)
+ * write socket EOF: pipe is empty && (splice_to_socket == 0 || socket errno == ECONNRESET)
+ * strategy: alway enable EV_READ|EV_WRITE, check invariant at the beginning, if error occured
+ *           check shutdown_how and determine what to do next, handle pipe or handle socket
+ */
+
 transocks_pump transocks_splicepump_ops;
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client **ppclient);
@@ -164,23 +174,23 @@ static int transocks_splicepump_start_pump(transocks_client **ppclient) {
     }
     pump->outbound_pipe.pipe_size = (size_t )pipesz;
     // create event
-    pump->client_read_ev = event_new(penv->eventBaseLoop, pclient->clientFd,
-                                     EV_READ, transocks_splicepump_client_readcb, ppclient);
+    pump->client_read_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_READ|EV_PERSIST,
+                                     transocks_splicepump_client_readcb, ppclient);
     if (pump->client_read_ev == NULL) {
         goto freeSplicepump;
     }
-    pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd,
-                                      EV_WRITE, transocks_splicepump_client_writecb, ppclient);
+    pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_WRITE|EV_PERSIST,
+                                      transocks_splicepump_client_writecb, ppclient);
     if (pump->client_write_ev == NULL) {
         goto freeSplicepump;
     }
-    pump->relay_read_ev = event_new(penv->eventBaseLoop, pclient->relayFd,
-                                    EV_READ, transocks_splicepump_relay_readcb, ppclient);
+    pump->relay_read_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_READ|EV_PERSIST,
+                                    transocks_splicepump_relay_readcb, ppclient);
     if (pump->relay_read_ev == NULL) {
         goto freeSplicepump;
     }
-    pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd,
-                                     EV_WRITE, transocks_splicepump_relay_writecb, ppclient);
+    pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_WRITE|EV_PERSIST,
+                                     transocks_splicepump_relay_writecb, ppclient);
     if (pump->relay_write_ev == NULL) {
         goto freeSplicepump;
     }
