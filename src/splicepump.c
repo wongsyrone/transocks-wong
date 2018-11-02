@@ -42,6 +42,7 @@ static inline bool splicepump_check_close(transocks_client **ppclient) {
             && (pclient->relay_shutdown_how & EV_READ) == EV_READ
             && (pclient->relay_shutdown_how & EV_WRITE) == EV_WRITE);
 }
+
 static int getpipesize(int fd) {
     if (fd < 0) return -1;
     int ret = fcntl(fd, F_GETPIPE_SZ);
@@ -57,7 +58,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
     transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
     bool client_can_read = true;
     bool is_pipe_full = ppump->outbound_pipe.data_in_pipe >= ppump->outbound_pipe.capacity;
-    if(is_pipe_full) {
+    if (is_pipe_full) {
         LOGD("pipe full")
         return;
     }
@@ -125,7 +126,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         }
     } else if (bytesRead == 0) {
         // no data in pipe, check other end
-        if ( ((*ppclient)->client_shutdown_how & EV_READ) == EV_READ ) {
+        if (((*ppclient)->client_shutdown_how & EV_READ) == EV_READ) {
             // other end closed
             is_client_closed = true;
             relay_can_write = false;
@@ -155,7 +156,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
     transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
     bool relay_can_read = true;
     bool is_pipe_full = ppump->inbound_pipe.data_in_pipe >= ppump->inbound_pipe.capacity;
-    if(is_pipe_full) {
+    if (is_pipe_full) {
         LOGD("pipe full")
         return;
     }
@@ -223,7 +224,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         }
     } else if (bytesRead == 0) {
         // no data in pipe, check other end
-        if ( ((*ppclient)->relay_shutdown_how & EV_READ) == EV_READ ) {
+        if (((*ppclient)->relay_shutdown_how & EV_READ) == EV_READ) {
             // other end closed
             is_relay_closed = true;
             client_can_write = false;
@@ -275,19 +276,19 @@ static void transocks_splicepump_free(transocks_client **ppclient) {
         return;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     if (ppump == NULL) return;
-    if (ppump->client_read_ev!=NULL) {
+    if (ppump->client_read_ev != NULL) {
         event_free(ppump->client_read_ev);
         ppump->client_read_ev = NULL;
     }
-    if (ppump->client_write_ev!=NULL) {
+    if (ppump->client_write_ev != NULL) {
         event_free(ppump->client_write_ev);
         ppump->client_write_ev = NULL;
     }
-    if (ppump->relay_read_ev!=NULL) {
+    if (ppump->relay_read_ev != NULL) {
         event_free(ppump->relay_read_ev);
         ppump->relay_read_ev = NULL;
     }
-    if (ppump->relay_write_ev!=NULL) {
+    if (ppump->relay_write_ev != NULL) {
         event_free(ppump->relay_write_ev);
         ppump->relay_write_ev = NULL;
     }

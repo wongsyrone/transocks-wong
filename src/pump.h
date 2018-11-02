@@ -30,6 +30,7 @@ typedef struct transocks_pump_t {
 /* exported functions */
 
 int transocks_pump_init(transocks_global_env *env);
+
 int transocks_start_pump(transocks_client **ppclient);
 
 #endif //TRANSOCKS_WONG_PUMP_H

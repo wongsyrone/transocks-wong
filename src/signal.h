@@ -11,6 +11,7 @@
 
 
 int signal_init(transocks_global_env *);
+
 void signal_deinit(transocks_global_env *);
 
 #endif //TRANSOCKS_WONG_SIGNAL_H

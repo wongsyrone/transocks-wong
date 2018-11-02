@@ -5,13 +5,17 @@
 #include "socks5.h"
 #include "pump.h"
 
-static void socks_handshake_stage_errcb(struct bufferevent *, short , void *);
-static void relay_onconnect_eventcb(struct bufferevent *, short , void *);
-static void socks_on_server_connect_reply_readcb(struct bufferevent *, void *);
-static void socks_send_connect_request(transocks_client **);
-static void socks_on_server_selected_method_readcb(struct bufferevent *, void *);
-static void socks_send_method_selection(transocks_client **);
+static void socks_handshake_stage_errcb(struct bufferevent *, short, void *);
 
+static void relay_onconnect_eventcb(struct bufferevent *, short, void *);
+
+static void socks_on_server_connect_reply_readcb(struct bufferevent *, void *);
+
+static void socks_send_connect_request(transocks_client **);
+
+static void socks_on_server_selected_method_readcb(struct bufferevent *, void *);
+
+static void socks_send_method_selection(transocks_client **);
 
 
 /*
@@ -47,7 +51,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
         goto freeClient;
     }
 
-    switch(preshead->atyp) {
+    switch (preshead->atyp) {
         case SOCKS5_ATYP_IPV4:
             evbuffer_drain(input, 10);
             break;
@@ -81,7 +85,7 @@ static void socks_send_connect_request(transocks_client **ppclient) {
 
     switch (pclient->destaddr->ss_family) {
         case AF_INET:
-            sa_ip4 = (struct sockaddr_in *)(pclient->destaddr);
+            sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
             req_ip4.ver = SOCKS5_VERSION;
             req_ip4.cmd = SOCKS5_CMD_CONNECT;
             req_ip4.rsv = 0x00;
@@ -89,10 +93,10 @@ static void socks_send_connect_request(transocks_client **ppclient) {
             req_ip4.port = sa_ip4->sin_port;
             memcpy(&(req_ip4.addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
             assert(sizeof(req_ip4) == 6 + 4);
-            bufferevent_write(relay_bev, (const void *)&req_ip4, sizeof(req_ip4));
+            bufferevent_write(relay_bev, (const void *) &req_ip4, sizeof(req_ip4));
             break;
         case AF_INET6:
-            sa_ip6 = (struct sockaddr_in6 *)(pclient->destaddr);
+            sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
             req_ip6.ver = SOCKS5_VERSION;
             req_ip6.cmd = SOCKS5_CMD_CONNECT;
             req_ip6.rsv = 0x00;
@@ -100,7 +104,7 @@ static void socks_send_connect_request(transocks_client **ppclient) {
             req_ip6.port = sa_ip6->sin6_port;
             memcpy(&(req_ip6.addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
             assert(sizeof(req_ip6) == 6 + 16);
-            bufferevent_write(relay_bev, (const void *)&req_ip6, sizeof(req_ip6));
+            bufferevent_write(relay_bev, (const void *) &req_ip6, sizeof(req_ip6));
             break;
         default:
             LOGE("unknown ss_family");

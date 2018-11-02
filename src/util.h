@@ -54,15 +54,24 @@ enum {
     GETOPT_VAL_HELP
 };
 
-void generate_sockaddr_port_str (char *, size_t, const struct sockaddr *, socklen_t);
+void generate_sockaddr_port_str(char *, size_t, const struct sockaddr *, socklen_t);
+
 int apply_tcp_keepalive(int);
+
 int apply_ipv6only(int, int);
+
 int apply_tcp_nodelay(int);
+
 int createpipe(int *readfd, int *writefd);
+
 int setnonblocking(int, bool);
+
 int getorigdst(int, struct sockaddr_storage *, socklen_t *);
+
 bool validatePort(struct sockaddr_storage *);
+
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
+
 void print_help(void);
 
 #endif //TRANSOCKS_WONG_UTIL_H

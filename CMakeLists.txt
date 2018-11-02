@@ -9,3 +9,5 @@ add_executable(transocks-wong
 find_package(Libevent2 REQUIRED)
 target_link_libraries(transocks-wong ${LIBEVENT2_LIBRARIES})
 include_directories(${LIBEVENT2_INCLUDE_DIR})
+include(GNUInstallDirs)
+install(TARGETS transocks-wong DESTINATION ${CMAKE_INSTALL_BINDIR})
