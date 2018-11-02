@@ -33,8 +33,10 @@ static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, voi
 }
 
 static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *userArg) {
+    LOGI("socks_on_server_connect_reply_readcb");
     transocks_client **ppclient = (transocks_client **) userArg;
-    struct evbuffer *input = bufferevent_get_input(bev);
+    struct bufferevent *relay_bev = (*ppclient)->relay_bev;
+    struct evbuffer *input = bufferevent_get_input(relay_bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 10) {
         LOGE("no enough data");
@@ -63,7 +65,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
             goto freeClient;
     }
     (*ppclient)->client_state = client_socks5_finish_handshake;
-
+    LOGI("before pump, %d", (int)evbuffer_get_length(input));
     if (transocks_start_pump(ppclient) != 0)
         goto freeClient;
 
@@ -75,6 +77,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
 }
 
 static void socks_send_connect_request(transocks_client **ppclient) {
+    LOGI("socks_send_connect_request");
     transocks_client *pclient = *ppclient;
     struct bufferevent *relay_bev = pclient->relay_bev;
     struct socks_request_ipv4 req_ip4;
@@ -124,6 +127,7 @@ static void socks_send_connect_request(transocks_client **ppclient) {
 }
 
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
+    LOGI("socks_on_server_selected_method_readcb");
     transocks_client **ppclient = (transocks_client **) userArg;
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
@@ -154,6 +158,7 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void
 }
 
 static void socks_send_method_selection(transocks_client **ppclient) {
+    LOGI("socks_send_method_selection");
     //wait for 2 bytes socks server selected method
     transocks_client *pclient = *ppclient;
     struct bufferevent *relay_bev = pclient->relay_bev;

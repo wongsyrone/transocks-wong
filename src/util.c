@@ -118,34 +118,19 @@ int getorigdst(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen) {
     socklen_t v6_len = sizeof(struct sockaddr_in6);
     socklen_t v4_len = sizeof(struct sockaddr_in);
     int err;
-    sa_family_t fd_domain;
-    socklen_t fd_domain_len = sizeof(fd_domain);
-    err = getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &fd_domain, &fd_domain_len);
+    err = getsockopt(fd, SOL_IPV6, IP6T_SO_ORIGINAL_DST, destaddr, &v6_len);
     if (err) {
-        LOGE_ERRNO("SO_DOMAIN");
-        return -1;
-    }
-    switch (fd_domain) {
-        case AF_INET6:
-            err = getsockopt(fd, SOL_IPV6, IP6T_SO_ORIGINAL_DST, destaddr, &v6_len);
-            if (err) {
-                LOGE_ERRNO("IP6T_SO_ORIGINAL_DST");
-                return -1;
-            }
-            *addrlen = v6_len;
-            return 0;
-        case AF_INET:
-            err = getsockopt(fd, SOL_IP, SO_ORIGINAL_DST, destaddr, &v4_len);
-            if (err) {
-                LOGE_ERRNO("SO_ORIGINAL_DST");
-                return -1;
-            }
-            *addrlen = v4_len;
-            return 0;
-        default:
-            LOGE("unknown domain");
+        LOGD_ERRNO("IP6T_SO_ORIGINAL_DST");
+        err = getsockopt(fd, SOL_IP, SO_ORIGINAL_DST, destaddr, &v4_len);
+        if (err) {
+            LOGE_ERRNO("SO_ORIGINAL_DST");
             return -1;
+        }
+        *addrlen = v4_len;
+        return 0;
     }
+    *addrlen = v6_len;
+    return 0;
 }
 
 bool validatePort(struct sockaddr_storage *ss) {
@@ -189,14 +174,14 @@ int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_
 void print_help() {
     fprintf(stdout, "transocks-wong help:\n");
     fprintf(stdout, "\t WARNING: data must be NATed to our listener endpoint\n");
-    fprintf(stdout, "\t --listener-addr   what address we are listening\n");
-    fprintf(stdout, "\t --listener-port   what port we are listening\n");
-    fprintf(stdout, "\t --socks5-addr     the SOCKS5 server address\n");
-    fprintf(stdout, "\t --socks5-port     the SOCKS5 server port\n");
+    fprintf(stdout, "\t --listener-addr-port   what address and port we are listening\n");
+    fprintf(stdout, "\t --socks5-addr-port     the SOCKS5 server address and port\n");
+    fprintf(stdout, "\t --pump-method          bufferpump/splicepump\n");
+    fprintf(stdout, "\t --help                 this message\n");
     fprintf(stdout, "\t Address must in this format:\n");
     fprintf(stdout, "\t\t - [IPv6Address]\n");
     fprintf(stdout, "\t\t - IPv4Address\n");
-    fprintf(stdout, "\t --pump-method bufferpump/splicepump\n");
+
 }
 
 
