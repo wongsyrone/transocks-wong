@@ -148,10 +148,6 @@ int getorigdst(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen) {
     }
 }
 
-bool is_retriable(int err_no) {
-    return err_no == EAGAIN || err_no == EWOULDBLOCK || err_no == EINTR;
-}
-
 bool validatePort(struct sockaddr_storage *ss) {
     switch (ss->ss_family) {
         case AF_INET:

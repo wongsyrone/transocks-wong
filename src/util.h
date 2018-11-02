@@ -14,7 +14,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -46,6 +45,7 @@
 #define TRANSOCKS_UNUSED(obj) ((void)obj)
 
 #define TRANSOCKS_BUFSIZE (4096)
+#define TRANSOCKS_IS_RETRIABLE(err) ((err) == EAGAIN || (err) == EWOULDBLOCK || (err) == EINTR)
 
 enum {
     GETOPT_VAL_LISTENERADDRPORT,
@@ -53,6 +53,7 @@ enum {
     GETOPT_VAL_PUMPMETHOD,
     GETOPT_VAL_HELP
 };
+
 void generate_sockaddr_port_str (char *, size_t, const struct sockaddr *, socklen_t);
 int apply_tcp_keepalive(int);
 int apply_ipv6only(int, int);
@@ -60,7 +61,6 @@ int apply_tcp_nodelay(int);
 int createpipe(int *readfd, int *writefd);
 int setnonblocking(int, bool);
 int getorigdst(int, struct sockaddr_storage *, socklen_t *);
-bool is_retriable(int);
 bool validatePort(struct sockaddr_storage *);
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
 void print_help(void);

@@ -4,8 +4,6 @@
 
 #include "bufferpump.h"
 
-// TODO
-
 /*
  * read EOF: eventcb & (BEV_EVENT_READING | BEV_EVENT_EOF)
  * write EOF: eventcb & (BEV_EVENT_ERROR | BEV_EVENT_WRITING) && errno == ECONNRESET
@@ -49,13 +47,10 @@ static inline bool transocks_check_close(transocks_client **ppclient) {
 static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     transocks_client *pclient = *ppclient;
-    bufferevent_disable(pclient->client_bev, EV_READ);
     struct evbuffer *clientinbuf = bufferevent_get_input(pclient->client_bev);
     struct evbuffer *relayoutbuf = bufferevent_get_output(pclient->relay_bev);
     size_t srclen = evbuffer_get_length(clientinbuf);
     evbuffer_remove_buffer(clientinbuf, relayoutbuf, srclen);
-
-    bufferevent_enable(pclient->relay_bev, EV_WRITE);
 }
 
 static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
@@ -75,27 +70,21 @@ static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
         transocks_bufferpump_free(ppclient);
         return;
     }
-    // reschedule next loop
-    bufferevent_enable(pclient->client_bev, EV_READ);
 
 }
 
 static void transocks_relay_readcb(struct bufferevent *bev, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     transocks_client *pclient = *ppclient;
-    bufferevent_disable(pclient->relay_bev, EV_READ);
     struct evbuffer *relayinbuf = bufferevent_get_input(pclient->relay_bev);
     struct evbuffer *clientoutbuf = bufferevent_get_output(pclient->client_bev);
     size_t srclen = evbuffer_get_length(relayinbuf);
     evbuffer_remove_buffer(relayinbuf, clientoutbuf, srclen);
-
-    bufferevent_enable(pclient->client_bev, EV_WRITE);
 }
 
 static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     transocks_client *pclient = *ppclient;
-    bufferevent_disable(pclient->client_bev, EV_WRITE);
     // check relay close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->client_bev))
         && (pclient->relay_shutdown_how & EV_READ) == EV_READ) {
@@ -109,44 +98,68 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
         transocks_bufferpump_free(ppclient);
         return;
     }
-    // reschedule next loop
-    bufferevent_enable(pclient->relay_bev, EV_READ);
 }
 
 
 static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     transocks_client *pclient = *ppclient;
+    if (bevs & (BEV_EVENT_READING| BEV_EVENT_EOF)) {
+        // read eof
+        pclient->client_shutdown_how |= EV_READ;
+        bufferevent_disable(pclient->client_bev, EV_READ);
+        if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
+            LOGE_ERRNO("client shutdown read err");
+        }
+        return;
+    }
+    if ( (bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
+    && ( bevs & BEV_EVENT_ERROR ) == BEV_EVENT_ERROR
+    && errno == ECONNRESET) {
+        // write eof
+        pclient->client_shutdown_how |= EV_WRITE;
+        bufferevent_disable(pclient->client_bev, EV_WRITE);
+        if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
+            LOGE_ERRNO("client shutdown write err");
+        }
+        return;
+    }
     if (bevs & BEV_EVENT_ERROR) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("client error %d (%s)", err, evutil_socket_error_to_string(err));
         transocks_bufferpump_free(ppclient);
         return;
     }
-    if ((bevs & BEV_EVENT_READING) == BEV_EVENT_READING && (bevs & BEV_EVENT_EOF) == BEV_EVENT_EOF) {
-        pclient->client_shutdown_how |= EV_READ;
-        bufferevent_disable(pclient->client_bev, EV_READ);
-        if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
-            LOGE_ERRNO("client shutdown read err");
-        }
-    }
 }
 
 static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client **ppclient = (transocks_client **) userArg;
     transocks_client *pclient = *ppclient;
-    if (bevs & BEV_EVENT_ERROR) {
-        int err = EVUTIL_SOCKET_ERROR();
-        LOGE("relay error %d (%s)", err, evutil_socket_error_to_string(err));
-        transocks_bufferpump_free(ppclient);
-        return;
-    }
-    if ((bevs & BEV_EVENT_READING) == BEV_EVENT_READING && (bevs & BEV_EVENT_EOF) == BEV_EVENT_EOF) {
+    if (bevs & (BEV_EVENT_READING| BEV_EVENT_EOF)) {
+        // read eof
         pclient->relay_shutdown_how |= EV_READ;
         bufferevent_disable(pclient->relay_bev, EV_READ);
         if (shutdown(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read err");
         }
+        return;
+    }
+    if ( (bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
+         && ( bevs & BEV_EVENT_ERROR ) == BEV_EVENT_ERROR
+         && errno == ECONNRESET) {
+        // write eof
+        pclient->relay_shutdown_how |= EV_WRITE;
+        bufferevent_disable(pclient->relay_bev, EV_WRITE);
+        if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
+            LOGE_ERRNO("relay shutdown write err");
+        }
+        return;
+    }
+    if (bevs & BEV_EVENT_ERROR) {
+        int err = EVUTIL_SOCKET_ERROR();
+        LOGE("relay error %d (%s)", err, evutil_socket_error_to_string(err));
+        transocks_bufferpump_free(ppclient);
+        return;
     }
 }
 

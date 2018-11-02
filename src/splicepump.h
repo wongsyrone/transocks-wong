@@ -18,8 +18,8 @@ typedef struct transocks_splicepump_t transocks_splicepump;
 typedef struct transocks_splicepipe_t {
     int pipe_readfd;   // pass pointer to read fd, pipe2() reads these two fds
     int pipe_writefd;
-    size_t pipe_size;
-    ssize_t data_in_pipe;
+    size_t data_in_pipe;
+    size_t capacity;
 } transocks_splicepipe;
 
 typedef struct transocks_splicepump_t {
