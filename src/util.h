@@ -55,6 +55,7 @@ enum {
 };
 void generate_sockaddr_port_str (char *, size_t, const struct sockaddr *, socklen_t);
 int apply_tcp_keepalive(int);
+int apply_ipv6only(int, int);
 int apply_tcp_nodelay(int);
 int createpipe(int *readfd, int *writefd);
 int setnonblocking(int, bool);

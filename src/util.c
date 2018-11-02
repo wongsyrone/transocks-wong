@@ -59,6 +59,15 @@ int apply_tcp_keepalive(int fd) {
     return 0;
 }
 
+int apply_ipv6only(int fd, int on) {
+    if (fd < 0) return -1;
+    if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&on, sizeof(int)) < 0) {
+        LOGE_ERRNO("fail to set TCP_NODELAY");
+        return -1;
+    }
+    return 0;
+}
+
 int apply_tcp_nodelay(int fd) {
     if (fd < 0) return -1;
     int on = 1;

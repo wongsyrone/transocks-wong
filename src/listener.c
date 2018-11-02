@@ -128,6 +128,13 @@ int listener_init(transocks_global_env *env) {
         LOGE("fail to set non-blocking");
         goto closeFd;
     }
+    // ensure we accept both ipv4 and ipv6
+    if (env->bindAddr->ss_family == AF_INET6) {
+        if (apply_ipv6only(fd, 0) != 0) {
+            LOGE("fail to disable IPV6_V6ONLY");
+            goto closeFd;
+        }
+    }
     // bind
     err = bind(fd, (struct sockaddr *) env->bindAddr, env->bindAddrLen);
     if (err != 0) {
