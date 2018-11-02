@@ -44,7 +44,6 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
         LOGE("fail to allocate memory");
         goto freeClient;
     }
-    transocks_client **ppclient = &pclient;
 
     char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
     char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
@@ -92,14 +91,14 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     pclient->client_bev = client_bev;
 
     // start connecting SOCKS5 relay
-    transocks_start_connect_relay(ppclient);
+    transocks_start_connect_relay(&pclient);
     return;
 
     freeBev:
     bufferevent_free(client_bev);
 
     freeClient:
-    transocks_client_free(ppclient);
+    transocks_client_free(&pclient);
 
     freeFd:
     close(clientFd);
