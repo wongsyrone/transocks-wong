@@ -72,17 +72,26 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     pclient->global_env = env;
 
     struct bufferevent *client_bev = bufferevent_socket_new(env->eventBaseLoop,
-                                                            clientFd, BEV_OPT_CLOSE_ON_FREE);
+                                                            -1, BEV_OPT_CLOSE_ON_FREE);
 
     if (client_bev == NULL) {
         LOGE("bufferevent_socket_new");
         goto freeBev;
     }
 
+    // should not read any data from client now, until handshake is finished
+    if (bufferevent_disable(client_bev, EV_READ) != 0) {
+        LOGE("bufferevent_disable read");
+        goto freeBev;
+    }
+    if (bufferevent_setfd(client_bev, clientFd) != 0) {
+        LOGE("bufferevent_setfd client");
+        goto freeBev;
+    }
+
     pclient->client_bev = client_bev;
 
     // start connecting SOCKS5 relay
-
     transocks_start_connect_relay(ppclient);
     return;
 
