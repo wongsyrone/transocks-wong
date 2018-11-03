@@ -103,7 +103,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
 static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events, void *arg) {
     transocks_client **ppclient = (transocks_client **) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
-    bool is_pipe_empty = ppump->outbound_pipe.data_in_pipe <= 0;
+    bool is_pipe_empty = ppump->outbound_pipe.data_in_pipe == 0;
     if (is_pipe_empty) {
         LOGD("pipe empty");
         return;
@@ -201,7 +201,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg) {
     transocks_client **ppclient = (transocks_client **) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
-    bool is_pipe_empty = ppump->inbound_pipe.data_in_pipe <= 0;
+    bool is_pipe_empty = ppump->inbound_pipe.data_in_pipe == 0;
     if (is_pipe_empty) {
         LOGD("pipe empty");
         return;
