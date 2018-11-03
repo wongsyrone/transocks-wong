@@ -9,6 +9,8 @@
 
 #include "splicepump.h"
 
+// TODO: doesn't call free, leaking fds
+
 /*
  * CONDITION: data_size_in_pipe and socket_can_keep_read_or_write
  * read socket EOF: pipe not full && splice() == 0
