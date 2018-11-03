@@ -24,8 +24,8 @@ static void socks_send_method_selection(transocks_client *);
  */
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if ((bevs & BEV_EVENT_EOF) == BEV_EVENT_EOF
-        || (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)
+        || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("socks error %d (%s)", err, evutil_socket_error_to_string(err));
         TRANSOCKS_FREE(transocks_client_free, pclient);
@@ -82,39 +82,41 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
 static void socks_send_connect_request(transocks_client *pclient) {
     LOGI("socks_send_connect_request");
     struct bufferevent *relay_bev = pclient->relay_bev;
-    struct socks_request_ipv4 req_ip4;
-    struct socks_request_ipv6 req_ip6;
-    struct sockaddr_in *sa_ip4;
-    struct sockaddr_in6 *sa_ip6;
-
-
-    switch (pclient->destaddr->ss_family) {
-        case AF_INET:
-            sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
-            req_ip4.ver = SOCKS5_VERSION;
-            req_ip4.cmd = SOCKS5_CMD_CONNECT;
-            req_ip4.rsv = 0x00;
-            req_ip4.atyp = SOCKS5_ATYP_IPV4;
-            req_ip4.port = sa_ip4->sin_port;
-            memcpy(&(req_ip4.addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
-            assert(sizeof(req_ip4) == 6 + 4);
-            bufferevent_write(relay_bev, (const void *) &req_ip4, sizeof(req_ip4));
-            break;
-        case AF_INET6:
-            sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
-            req_ip6.ver = SOCKS5_VERSION;
-            req_ip6.cmd = SOCKS5_CMD_CONNECT;
-            req_ip6.rsv = 0x00;
-            req_ip6.atyp = SOCKS5_ATYP_IPV6;
-            req_ip6.port = sa_ip6->sin6_port;
-            memcpy(&(req_ip6.addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
-            assert(sizeof(req_ip6) == 6 + 16);
-            bufferevent_write(relay_bev, (const void *) &req_ip6, sizeof(req_ip6));
-            break;
-        default:
-            LOGE("unknown ss_family");
-            goto freeClient;
+    struct socks_request_ipv4 *req_ip4 = NULL;
+    struct socks_request_ipv6 *req_ip6 = NULL;
+    struct sockaddr_in *sa_ip4 = NULL;
+    struct sockaddr_in6 *sa_ip6 = NULL;
+    if (pclient->destaddr->ss_family == AF_INET) {
+        req_ip4 = calloc(1, sizeof(struct socks_request_ipv4));
+        if (req_ip4 == NULL) goto freeClient;
+        sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
+        req_ip4->ver = SOCKS5_VERSION;
+        req_ip4->cmd = SOCKS5_CMD_CONNECT;
+        req_ip4->rsv = 0x00;
+        req_ip4->atyp = SOCKS5_ATYP_IPV4;
+        req_ip4->port = sa_ip4->sin_port;
+        assert(sizeof(struct socks_request_ipv4) == 6 + 4);
+        memcpy(&(req_ip4->addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
+        bufferevent_write(relay_bev, (const void *) &req_ip4, sizeof(req_ip4));
+        TRANSOCKS_FREE(free, req_ip4);
+    } else if (pclient->destaddr->ss_family == AF_INET6) {
+        req_ip6 = calloc(1, sizeof(struct socks_request_ipv6));
+        if (req_ip6 == NULL) goto freeClient;
+        sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
+        req_ip6->ver = SOCKS5_VERSION;
+        req_ip6->cmd = SOCKS5_CMD_CONNECT;
+        req_ip6->rsv = 0x00;
+        req_ip6->atyp = SOCKS5_ATYP_IPV6;
+        req_ip6->port = sa_ip6->sin6_port;
+        assert(sizeof(struct socks_request_ipv6) == 6 + 16);
+        memcpy(&(req_ip6->addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
+        bufferevent_write(relay_bev, (const void *) &req_ip6, sizeof(req_ip6));
+        TRANSOCKS_FREE(free, req_ip6);
+    } else {
+        LOGE("unknown ss_family");
+        goto freeClient;
     }
+
     // VER + REP + RSV + ATYP + 4-byte ipv4 ADDR + 2-byte port
     // (should not reply with domain, iptables has ip address only)
     bufferevent_setwatermark(relay_bev, EV_READ, 10, TRANSOCKS_BUFSIZE);
@@ -174,12 +176,14 @@ static void socks_send_method_selection(transocks_client *pclient) {
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if (bevs & BEV_EVENT_CONNECTED) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_CONNECTED)) {
         /* We're connected */
         pclient->client_state = client_relay_connected;
         socks_send_method_selection(pclient);
         return;
-    } else if (bevs & BEV_EVENT_ERROR) {
+    }
+
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         /* An error occured while connecting. */
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("connect relay %d (%s)", err, evutil_socket_error_to_string(err));
@@ -220,6 +224,7 @@ void transocks_start_connect_relay(transocks_client *pClient) {
     pClient->relay_bev = relay_bev;
 
     bufferevent_setcb(pClient->relay_bev, NULL, NULL, relay_onconnect_eventcb, pClient);
+    bufferevent_enable(pClient->relay_bev, EV_WRITE);
     if (bufferevent_socket_connect(pClient->relay_bev,
                                    (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");

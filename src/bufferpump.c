@@ -35,10 +35,10 @@ static void transocks_bufferpump_free(transocks_client *pclient) {
 }
 
 static inline bool transocks_check_close(transocks_client *pclient) {
-    return ((pclient->client_shutdown_how & EV_READ) == EV_READ
-            && (pclient->client_shutdown_how & EV_WRITE) == EV_WRITE
-            && (pclient->relay_shutdown_how & EV_READ) == EV_READ
-            && (pclient->relay_shutdown_how & EV_WRITE) == EV_WRITE);
+    return TRANSOCKS_CHKBIT(pclient->client_shutdown_how, EV_READ)
+           && TRANSOCKS_CHKBIT(pclient->client_shutdown_how, EV_WRITE)
+           && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, EV_READ)
+           && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, EV_WRITE);
 }
 
 static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
@@ -54,8 +54,8 @@ static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
     bufferevent_disable(pclient->relay_bev, EV_WRITE);
     // check client close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->relay_bev))
-        && (pclient->client_shutdown_how & EV_READ) == EV_READ) {
-        pclient->relay_shutdown_how |= EV_WRITE;
+        && TRANSOCKS_CHKBIT(pclient->client_shutdown_how, EV_READ)) {
+        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, EV_WRITE);
         if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
@@ -80,8 +80,8 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
     // check relay close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->client_bev))
-        && (pclient->relay_shutdown_how & EV_READ) == EV_READ) {
-        pclient->client_shutdown_how |= EV_WRITE;
+        && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, EV_READ)) {
+        TRANSOCKS_SETBIT(pclient->client_shutdown_how, EV_WRITE);
         if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
@@ -96,27 +96,28 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
 
 static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if (bevs & (BEV_EVENT_READING | BEV_EVENT_EOF)) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
+        && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
         // read eof
-        pclient->client_shutdown_how |= EV_READ;
+        TRANSOCKS_SETBIT(pclient->client_shutdown_how, EV_READ);
         bufferevent_disable(pclient->client_bev, EV_READ);
         if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
             LOGE_ERRNO("client shutdown read err");
         }
         return;
     }
-    if ((bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
-        && (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
+        && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)
         && errno == ECONNRESET) {
         // write eof
-        pclient->client_shutdown_how |= EV_WRITE;
+        TRANSOCKS_SETBIT(pclient->client_shutdown_how, EV_WRITE);
         bufferevent_disable(pclient->client_bev, EV_WRITE);
         if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
         return;
     }
-    if (bevs & BEV_EVENT_ERROR) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("client error %d (%s)", err, evutil_socket_error_to_string(err));
         TRANSOCKS_FREE(transocks_bufferpump_free, pclient);
@@ -126,27 +127,28 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
 
 static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if (bevs & (BEV_EVENT_READING | BEV_EVENT_EOF)) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
+        && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
         // read eof
-        pclient->relay_shutdown_how |= EV_READ;
+        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, EV_READ);
         bufferevent_disable(pclient->relay_bev, EV_READ);
         if (shutdown(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read err");
         }
         return;
     }
-    if ((bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
-        && (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
+        && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)
         && errno == ECONNRESET) {
         // write eof
-        pclient->relay_shutdown_how |= EV_WRITE;
+        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, EV_WRITE);
         bufferevent_disable(pclient->relay_bev, EV_WRITE);
         if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
         return;
     }
-    if (bevs & BEV_EVENT_ERROR) {
+    if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("relay error %d (%s)", err, evutil_socket_error_to_string(err));
         TRANSOCKS_FREE(transocks_bufferpump_free, pclient);

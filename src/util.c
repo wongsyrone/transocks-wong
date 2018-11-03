@@ -4,6 +4,7 @@
 
 #include "util.h"
 #include "log.h"
+#include "pump.h"
 
 void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct sockaddr *sa, socklen_t socklen) {
     char unknown[] = "???:???";
@@ -176,7 +177,7 @@ void print_help() {
     fprintf(stdout, "\t WARNING: data must be NATed to our listener endpoint\n");
     fprintf(stdout, "\t --listener-addr-port   what address and port we are listening\n");
     fprintf(stdout, "\t --socks5-addr-port     the SOCKS5 server address and port\n");
-    fprintf(stdout, "\t --pump-method          bufferpump/splicepump\n");
+    fprintf(stdout, "\t --pump-method          " PUMPMETHOD_BUFFER "/" PUMPMETHOD_SPLICE "\n");
     fprintf(stdout, "\t --help                 this message\n");
     fprintf(stdout, "\t Address must in this format:\n");
     fprintf(stdout, "\t\t - [IPv6Address]\n");

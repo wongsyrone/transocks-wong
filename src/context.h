@@ -24,10 +24,12 @@ enum transocks_client_state {
     client_INVALID
 };
 
-
+#define TRANSOCKS_SHUTDOWN_READ ((uint8_t)0x01)
+#define TRANSOCKS_SHUTDOWN_WRITE ((uint8_t)0x02)
+#define TRANSOCKS_SHUTDOWN_MASK (TRANSOCKS_SHUTDOWN_READ | TRANSOCKS_SHUTDOWN_WRITE)
 
 // which side of shutdown()
-typedef short transocks_shutdown_how_t; // EV_READ | EV_WRITE
+typedef uint8_t transocks_shutdown_how_t;
 
 /* forward declaration */
 

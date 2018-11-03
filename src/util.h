@@ -44,6 +44,8 @@
 #define TRANSOCKS_FOREACH_REVERSE(ptr, array) for (ptr = array + TRANSOCKS_SIZEOF_ARRAY(array) - 1; ptr >= array; ptr--)
 #define TRANSOCKS_UNUSED(obj) ((void)obj)
 
+#define TRANSOCKS_CHKBIT(val, flag) (((val) & (flag)) == (flag))
+#define TRANSOCKS_SETBIT(val, flag) ((val) |= (flag))
 #define TRANSOCKS_BUFSIZE (4096)
 #define TRANSOCKS_IS_RETRIABLE(err) ((err) == EAGAIN || (err) == EWOULDBLOCK || (err) == EINTR)
 
