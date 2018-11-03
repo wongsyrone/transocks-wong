@@ -28,8 +28,6 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
 static void transocks_bufferpump_free(transocks_client *pclient);
 
 
-
-
 static void transocks_bufferpump_free(transocks_client *pclient) {
     bufferevent_disable(pclient->client_bev, EV_READ | EV_WRITE);
     bufferevent_disable(pclient->relay_bev, EV_READ | EV_WRITE);
@@ -98,7 +96,7 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
 
 static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if (bevs & (BEV_EVENT_READING| BEV_EVENT_EOF)) {
+    if (bevs & (BEV_EVENT_READING | BEV_EVENT_EOF)) {
         // read eof
         pclient->client_shutdown_how |= EV_READ;
         bufferevent_disable(pclient->client_bev, EV_READ);
@@ -107,9 +105,9 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         }
         return;
     }
-    if ( (bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
-    && ( bevs & BEV_EVENT_ERROR ) == BEV_EVENT_ERROR
-    && errno == ECONNRESET) {
+    if ((bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
+        && (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR
+        && errno == ECONNRESET) {
         // write eof
         pclient->client_shutdown_how |= EV_WRITE;
         bufferevent_disable(pclient->client_bev, EV_WRITE);
@@ -128,7 +126,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
 
 static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
-    if (bevs & (BEV_EVENT_READING| BEV_EVENT_EOF)) {
+    if (bevs & (BEV_EVENT_READING | BEV_EVENT_EOF)) {
         // read eof
         pclient->relay_shutdown_how |= EV_READ;
         bufferevent_disable(pclient->relay_bev, EV_READ);
@@ -137,9 +135,9 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         }
         return;
     }
-    if ( (bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
-         && ( bevs & BEV_EVENT_ERROR ) == BEV_EVENT_ERROR
-         && errno == ECONNRESET) {
+    if ((bevs & BEV_EVENT_WRITING) == BEV_EVENT_WRITING
+        && (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR
+        && errno == ECONNRESET) {
         // write eof
         pclient->relay_shutdown_how |= EV_WRITE;
         bufferevent_disable(pclient->relay_bev, EV_WRITE);

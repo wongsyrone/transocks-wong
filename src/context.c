@@ -31,34 +31,25 @@ transocks_global_env *transocks_global_env_new(void) {
         goto fail;
     }
     return env;
+
     fail:
-    if (env->bindAddr) TRANSOCKS_FREE(free, env->bindAddr);
-    if (env->relayAddr) TRANSOCKS_FREE(free, env->relayAddr);
-    if (env->eventBaseLoop) TRANSOCKS_FREE(event_base_free, env->eventBaseLoop);
-    if (env) TRANSOCKS_FREE(free, env);
+    TRANSOCKS_FREE(free, env->bindAddr);
+    TRANSOCKS_FREE(free, env->relayAddr);
+    TRANSOCKS_FREE(event_base_free, env->eventBaseLoop);
+    TRANSOCKS_FREE(free, env);
     return NULL;
 }
 
 void transocks_global_env_free(transocks_global_env *pEnv) {
     if (pEnv == NULL) return;
-    if (pEnv->pumpMethodName != NULL) {
-        TRANSOCKS_FREE(free, pEnv->pumpMethodName);
-    }
-    if (pEnv->relayAddr != NULL) {
-        TRANSOCKS_FREE(free, pEnv->relayAddr);
-    }
 
-    if (pEnv->bindAddr != NULL) {
-        TRANSOCKS_FREE(free, pEnv->bindAddr);
-    }
-
+    TRANSOCKS_FREE(free, pEnv->pumpMethodName);
+    TRANSOCKS_FREE(free, pEnv->relayAddr);
+    TRANSOCKS_FREE(free, pEnv->bindAddr);
     listener_deinit(pEnv);
     signal_deinit(pEnv);
 
-
-    if (pEnv->eventBaseLoop != NULL) {
-        TRANSOCKS_FREE(event_base_free, pEnv->eventBaseLoop);
-    }
+    TRANSOCKS_FREE(event_base_free, pEnv->eventBaseLoop);
     TRANSOCKS_FREE(free, pEnv);
 }
 
@@ -81,35 +72,32 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     return client;
 
     fail:
-    if (client->clientaddr) TRANSOCKS_FREE(free, client->clientaddr);
-    if (client->destaddr) TRANSOCKS_FREE(free, client->destaddr);
-    if (client) TRANSOCKS_FREE(free, client);
+    TRANSOCKS_FREE(free, client->clientaddr);
+    TRANSOCKS_FREE(free, client->destaddr);
+    TRANSOCKS_FREE(free, client);
     return NULL;
 }
 
 void transocks_client_free(transocks_client *pClient) {
     if (pClient == NULL) return;
-    if (pClient->clientaddr!=NULL) {
-        TRANSOCKS_FREE(free, pClient->clientaddr);
-    }
-    if (pClient->destaddr!=NULL) {
-        TRANSOCKS_FREE(free, pClient->destaddr);
-    }
+
+    TRANSOCKS_FREE(free, pClient->clientaddr);
+    TRANSOCKS_FREE(free, pClient->destaddr);
+
     pClient->client_state = client_INVALID;
+
     if (pClient->relay_bev != NULL) {
         bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
-        TRANSOCKS_FREE(bufferevent_free, pClient->relay_bev);
     }
     if (pClient->client_bev != NULL) {
         bufferevent_disable(pClient->client_bev, EV_READ | EV_WRITE);
-        TRANSOCKS_FREE(bufferevent_free, pClient->client_bev);
     }
-    if (pClient->clientFd > -1) {
-        TRANSOCKS_CLOSE(pClient->clientFd);
-    }
-    if (pClient->relayFd > -1) {
-        TRANSOCKS_CLOSE(pClient->relayFd);
-    }
+
+    TRANSOCKS_FREE(bufferevent_free, pClient->relay_bev);
+    TRANSOCKS_FREE(bufferevent_free, pClient->client_bev);
+
+    TRANSOCKS_CLOSE(pClient->clientFd);
+    TRANSOCKS_CLOSE(pClient->relayFd);
     pClient->user_arg = NULL;
     TRANSOCKS_FREE(free, pClient);
 }
