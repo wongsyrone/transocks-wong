@@ -23,6 +23,7 @@ static void socks_send_method_selection(transocks_client *);
  * thus treats any EOF as error
  */
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)
         || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
@@ -33,6 +34,7 @@ static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, voi
 }
 
 static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     LOGI("socks_on_server_connect_reply_readcb");
     transocks_client *pClient = (transocks_client *) userArg;
     struct bufferevent *relay_bev = pClient->relay_bev;
@@ -175,6 +177,7 @@ static void socks_send_method_selection(transocks_client *pclient) {
 }
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_CONNECTED)) {
         /* We're connected */

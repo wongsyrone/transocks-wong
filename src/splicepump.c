@@ -53,6 +53,8 @@ static int getpipesize(int fd) {
 }
 
 static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events, void *arg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool client_can_read = true;
@@ -100,6 +102,8 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
 }
 
 static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events, void *arg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool is_pipe_empty = ppump->outbound_pipe.data_in_pipe == 0;
@@ -151,6 +155,8 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
 }
 
 static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, void *arg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool relay_can_read = true;
@@ -198,6 +204,8 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 }
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool is_pipe_empty = ppump->inbound_pipe.data_in_pipe == 0;

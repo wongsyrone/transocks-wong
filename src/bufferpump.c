@@ -42,6 +42,7 @@ static inline bool transocks_check_close(transocks_client *pclient) {
 }
 
 static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     struct evbuffer *clientinbuf = bufferevent_get_input(pclient->client_bev);
     struct evbuffer *relayoutbuf = bufferevent_get_output(pclient->relay_bev);
@@ -50,6 +51,7 @@ static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
 }
 
 static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     bufferevent_disable(pclient->relay_bev, EV_WRITE);
     // check client close
@@ -69,6 +71,7 @@ static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
 }
 
 static void transocks_relay_readcb(struct bufferevent *bev, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     struct evbuffer *relayinbuf = bufferevent_get_input(pclient->relay_bev);
     struct evbuffer *clientoutbuf = bufferevent_get_output(pclient->client_bev);
@@ -77,6 +80,7 @@ static void transocks_relay_readcb(struct bufferevent *bev, void *userArg) {
 }
 
 static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     // check relay close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->client_bev))
@@ -95,6 +99,7 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
 
 
 static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
@@ -126,6 +131,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
 }
 
 static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
+    TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {

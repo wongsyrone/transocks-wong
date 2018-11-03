@@ -6,6 +6,8 @@
 
 
 static void signal_cb(evutil_socket_t fd, short events, void *arg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_global_env *env = (transocks_global_env *) arg;
     if (event_base_loopbreak(env->eventBaseLoop) != 0)
         LOGE("fail to event_base_loopbreak");

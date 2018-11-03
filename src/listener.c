@@ -11,6 +11,7 @@ static void listener_cb(struct evconnlistener *, evutil_socket_t,
 
 
 static void listener_errcb(struct evconnlistener *listener, void *userArg) {
+    TRANSOCKS_UNUSED(listener);
     transocks_global_env *env = (transocks_global_env *) userArg;
     int err = EVUTIL_SOCKET_ERROR();
     LOGE("listener error %d (%s)", err, evutil_socket_error_to_string(err));
@@ -20,6 +21,7 @@ static void listener_errcb(struct evconnlistener *listener, void *userArg) {
 
 static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientFd,
                         struct sockaddr *srcAddr, int srcSockLen, void *userArg) {
+    TRANSOCKS_UNUSED(listener);
     transocks_global_env *env = (transocks_global_env *) userArg;
     socklen_t typedSrcSockLen = (socklen_t) srcSockLen;
 
