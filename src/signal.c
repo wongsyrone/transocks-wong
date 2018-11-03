@@ -33,14 +33,13 @@ int signal_init(transocks_global_env *env) {
 }
 
 void signal_deinit(transocks_global_env *env) {
+    if (env == NULL) return;
     if (env->sigint_ev != NULL) {
         evsignal_del(env->sigint_ev);
-        event_free(env->sigint_ev);
-        env->sigint_ev = NULL;
+        TRANSOCKS_FREE(event_free, env->sigint_ev);
     }
     if (env->sigterm_ev != NULL) {
         evsignal_del(env->sigterm_ev);
-        event_free(env->sigterm_ev);
-        env->sigterm_ev = NULL;
+        TRANSOCKS_FREE(event_free, env->sigterm_ev);
     }
 }

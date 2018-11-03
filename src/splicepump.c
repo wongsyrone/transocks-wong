@@ -21,11 +21,11 @@
 
 transocks_pump transocks_splicepump_ops;
 
-static transocks_splicepump *transocks_splicepump_new(transocks_client **ppclient);
+static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient);
 
 static int getpipesize(int fd);
 
-static void transocks_splicepump_free(transocks_client **ppclient);
+static void transocks_splicepump_free(transocks_client *pclient);
 
 static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events, void *arg);
 
@@ -35,8 +35,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg);
 
-static inline bool splicepump_check_close(transocks_client **ppclient) {
-    transocks_client *pclient = *ppclient;
+static inline bool splicepump_check_close(transocks_client *pclient) {
     return ((pclient->client_shutdown_how & EV_READ) == EV_READ
             && (pclient->client_shutdown_how & EV_WRITE) == EV_WRITE
             && (pclient->relay_shutdown_how & EV_READ) == EV_READ
@@ -54,8 +53,8 @@ static int getpipesize(int fd) {
 }
 
 static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events, void *arg) {
-    transocks_client **ppclient = (transocks_client **) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
+    transocks_client *pclient = (transocks_client *) arg;
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool client_can_read = true;
     bool is_pipe_full = ppump->outbound_pipe.data_in_pipe >= ppump->outbound_pipe.capacity;
     if (is_pipe_full) {
@@ -63,7 +62,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         return;
     }
     ssize_t bytesRead;
-    bytesRead = splice((*ppclient)->clientFd, NULL, ppump->outbound_pipe.pipe_writefd, NULL,
+    bytesRead = splice(pclient->clientFd, NULL, ppump->outbound_pipe.pipe_writefd, NULL,
                        ppump->outbound_pipe.capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -88,21 +87,21 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
 
     decide:
     if (!client_can_read) {
-        (*ppclient)->client_shutdown_how |= EV_READ;
-        if (shutdown((*ppclient)->clientFd, SHUT_RD) < 0) {
+        pclient->client_shutdown_how |= EV_READ;
+        if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
             LOGE_ERRNO("client shutdown read");
         }
         event_del(ppump->client_read_ev);
     }
-    if (splicepump_check_close(ppclient)) {
-        transocks_splicepump_free(ppclient);
+    if (splicepump_check_close(pclient)) {
+        TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
 }
 
 static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events, void *arg) {
-    transocks_client **ppclient = (transocks_client **) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
+    transocks_client *pclient = (transocks_client *) arg;
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool is_pipe_empty = ppump->outbound_pipe.data_in_pipe == 0;
     if (is_pipe_empty) {
         LOGD("pipe empty");
@@ -111,7 +110,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     bool is_client_closed = false;
     bool relay_can_write = true;
     ssize_t bytesRead;
-    bytesRead = splice(ppump->outbound_pipe.pipe_readfd, NULL, (*ppclient)->relayFd, NULL,
+    bytesRead = splice(ppump->outbound_pipe.pipe_readfd, NULL, pclient->relayFd, NULL,
                        (size_t) ppump->outbound_pipe.data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -126,7 +125,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         }
     } else if (bytesRead == 0) {
         // no data in pipe, check other end
-        if (((*ppclient)->client_shutdown_how & EV_READ) == EV_READ) {
+        if ((pclient->client_shutdown_how & EV_READ) == EV_READ) {
             // other end closed
             is_client_closed = true;
             relay_can_write = false;
@@ -139,21 +138,21 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
 
     decide:
     if (!relay_can_write) {
-        (*ppclient)->relay_shutdown_how |= EV_WRITE;
-        if (shutdown((*ppclient)->relayFd, SHUT_WR) < 0) {
+        pclient->relay_shutdown_how |= EV_WRITE;
+        if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write");
         }
         event_del(ppump->relay_write_ev);
     }
-    if (splicepump_check_close(ppclient)) {
-        transocks_splicepump_free(ppclient);
+    if (splicepump_check_close(pclient)) {
+        TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
 }
 
 static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, void *arg) {
-    transocks_client **ppclient = (transocks_client **) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
+    transocks_client *pclient = (transocks_client *) arg;
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool relay_can_read = true;
     bool is_pipe_full = ppump->inbound_pipe.data_in_pipe >= ppump->inbound_pipe.capacity;
     if (is_pipe_full) {
@@ -161,7 +160,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         return;
     }
     ssize_t bytesRead;
-    bytesRead = splice((*ppclient)->relayFd, NULL, ppump->inbound_pipe.pipe_writefd, NULL,
+    bytesRead = splice(pclient->relayFd, NULL, ppump->inbound_pipe.pipe_writefd, NULL,
                        ppump->inbound_pipe.capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -186,21 +185,21 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 
     decide:
     if (!relay_can_read) {
-        (*ppclient)->relay_shutdown_how |= EV_READ;
-        if (shutdown((*ppclient)->relayFd, SHUT_RD) < 0) {
+        pclient->relay_shutdown_how |= EV_READ;
+        if (shutdown(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read");
         }
         event_del(ppump->relay_read_ev);
     }
-    if (splicepump_check_close(ppclient)) {
-        transocks_splicepump_free(ppclient);
+    if (splicepump_check_close(pclient)) {
+        TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
 }
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg) {
-    transocks_client **ppclient = (transocks_client **) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) ((*ppclient)->user_arg);
+    transocks_client *pclient = (transocks_client *) arg;
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     bool is_pipe_empty = ppump->inbound_pipe.data_in_pipe == 0;
     if (is_pipe_empty) {
         LOGD("pipe empty");
@@ -209,7 +208,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     bool is_relay_closed = false;
     bool client_can_write = true;
     ssize_t bytesRead;
-    bytesRead = splice(ppump->inbound_pipe.pipe_readfd, NULL, (*ppclient)->clientFd, NULL,
+    bytesRead = splice(ppump->inbound_pipe.pipe_readfd, NULL, pclient->clientFd, NULL,
                        (size_t) ppump->inbound_pipe.data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -224,7 +223,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         }
     } else if (bytesRead == 0) {
         // no data in pipe, check other end
-        if (((*ppclient)->relay_shutdown_how & EV_READ) == EV_READ) {
+        if ((pclient->relay_shutdown_how & EV_READ) == EV_READ) {
             // other end closed
             is_relay_closed = true;
             client_can_write = false;
@@ -237,19 +236,19 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
 
     decide:
     if (!client_can_write) {
-        (*ppclient)->client_shutdown_how |= EV_WRITE;
-        if (shutdown((*ppclient)->clientFd, SHUT_WR) < 0) {
+        pclient->client_shutdown_how |= EV_WRITE;
+        if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write");
         }
         event_del(ppump->client_write_ev);
     }
-    if (splicepump_check_close(ppclient)) {
-        transocks_splicepump_free(ppclient);
+    if (splicepump_check_close(pclient)) {
+        TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
 }
 
-static transocks_splicepump *transocks_splicepump_new(transocks_client **ppclient) {
+static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient) {
     transocks_splicepump *pump = calloc(1, sizeof(transocks_splicepump));
     if (!pump) {
         LOGE("mem");
@@ -263,56 +262,29 @@ static transocks_splicepump *transocks_splicepump_new(transocks_client **ppclien
     pump->outbound_pipe.pipe_readfd = -1;
     pump->outbound_pipe.data_in_pipe = 0;
     // attach pump to client context
-    (*ppclient)->user_arg = pump;
+    pclient->user_arg = pump;
 
     return pump;
 }
 
-static void transocks_splicepump_free(transocks_client **ppclient) {
-    if (ppclient == NULL)
-        return;
-    transocks_client *pclient = *ppclient;
+static void transocks_splicepump_free(transocks_client *pclient) {
     if (pclient == NULL)
         return;
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     if (ppump == NULL) return;
-    if (ppump->client_read_ev != NULL) {
-        event_free(ppump->client_read_ev);
-        ppump->client_read_ev = NULL;
-    }
-    if (ppump->client_write_ev != NULL) {
-        event_free(ppump->client_write_ev);
-        ppump->client_write_ev = NULL;
-    }
-    if (ppump->relay_read_ev != NULL) {
-        event_free(ppump->relay_read_ev);
-        ppump->relay_read_ev = NULL;
-    }
-    if (ppump->relay_write_ev != NULL) {
-        event_free(ppump->relay_write_ev);
-        ppump->relay_write_ev = NULL;
-    }
-    if (ppump->inbound_pipe.pipe_readfd > 0) {
-        close(ppump->inbound_pipe.pipe_readfd);
-        ppump->inbound_pipe.pipe_readfd = -1;
-    }
-    if (ppump->inbound_pipe.pipe_writefd > 0) {
-        close(ppump->inbound_pipe.pipe_writefd);
-        ppump->inbound_pipe.pipe_writefd = -1;
-    }
-    if (ppump->outbound_pipe.pipe_readfd > 0) {
-        close(ppump->outbound_pipe.pipe_readfd);
-        ppump->outbound_pipe.pipe_readfd = -1;
-    }
-    if (ppump->outbound_pipe.pipe_writefd > 0) {
-        close(ppump->outbound_pipe.pipe_writefd);
-        ppump->outbound_pipe.pipe_writefd = -1;
-    }
-    transocks_client_free(ppclient);
+    TRANSOCKS_FREE(event_free, ppump->client_read_ev);
+    TRANSOCKS_FREE(event_free, ppump->client_write_ev);
+    TRANSOCKS_FREE(event_free, ppump->relay_read_ev);
+    TRANSOCKS_FREE(event_free, ppump->relay_write_ev);
+    TRANSOCKS_CLOSE(ppump->inbound_pipe.pipe_readfd);
+    TRANSOCKS_CLOSE(ppump->inbound_pipe.pipe_writefd);
+    TRANSOCKS_CLOSE(ppump->outbound_pipe.pipe_readfd);
+    TRANSOCKS_CLOSE(ppump->outbound_pipe.pipe_writefd);
+    TRANSOCKS_FREE(free, ppump);
+    TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
-static int transocks_splicepump_start_pump(transocks_client **ppclient) {
-    transocks_client *pclient = *ppclient;
+static int transocks_splicepump_start_pump(transocks_client *pclient) {
     transocks_global_env *penv = pclient->global_env;
     int pipesz;
     int error = bufferevent_disable(pclient->client_bev, EV_READ | EV_WRITE);
@@ -325,7 +297,7 @@ static int transocks_splicepump_start_pump(transocks_client **ppclient) {
         LOGE("relay bev bufferevent_disable");
         goto fail;
     }
-    transocks_splicepump *pump = transocks_splicepump_new(ppclient);
+    transocks_splicepump *pump = transocks_splicepump_new(pclient);
     if (pump == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
@@ -350,22 +322,22 @@ static int transocks_splicepump_start_pump(transocks_client **ppclient) {
     pump->outbound_pipe.capacity = (size_t) pipesz;
     // create event
     pump->client_read_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_READ | EV_PERSIST,
-                                     transocks_splicepump_client_readcb, ppclient);
+                                     transocks_splicepump_client_readcb, pclient);
     if (pump->client_read_ev == NULL) {
         goto fail;
     }
     pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_WRITE | EV_PERSIST,
-                                      transocks_splicepump_client_writecb, ppclient);
+                                      transocks_splicepump_client_writecb, pclient);
     if (pump->client_write_ev == NULL) {
         goto fail;
     }
     pump->relay_read_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_READ | EV_PERSIST,
-                                    transocks_splicepump_relay_readcb, ppclient);
+                                    transocks_splicepump_relay_readcb, pclient);
     if (pump->relay_read_ev == NULL) {
         goto fail;
     }
     pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_WRITE | EV_PERSIST,
-                                     transocks_splicepump_relay_writecb, ppclient);
+                                     transocks_splicepump_relay_writecb, pclient);
     if (pump->relay_write_ev == NULL) {
         goto fail;
     }
@@ -385,7 +357,7 @@ static int transocks_splicepump_start_pump(transocks_client **ppclient) {
     return 0;
 
     fail:
-    transocks_splicepump_free(ppclient);
+    TRANSOCKS_FREE(transocks_splicepump_free, pclient);
     return -1;
 }
 

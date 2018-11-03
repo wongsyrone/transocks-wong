@@ -30,14 +30,14 @@ int transocks_pump_init(transocks_global_env *env) {
     return -1;
 }
 
-int transocks_start_pump(transocks_client **ppclient) {
+int transocks_start_pump(transocks_client *pclient) {
     if (pumpMethodImpl == NULL || pumpMethodImpl->start_pump_fn == NULL)
         return -1;
 
-    if (pumpMethodImpl->start_pump_fn(ppclient) != 0) {
+    if (pumpMethodImpl->start_pump_fn(pclient) != 0) {
         LOGE("fail to start pump %s", pumpMethodImpl->name);
         return -1;
     }
-    (*ppclient)->client_state = client_pumping_data;
+    pclient->client_state = client_pumping_data;
     return 0;
 }

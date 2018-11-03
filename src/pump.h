@@ -17,7 +17,7 @@
 typedef struct transocks_pump_t transocks_pump;
 
 /* functions */
-typedef int (*transocks_pump_start_fn_t)(transocks_client **);
+typedef int (*transocks_pump_start_fn_t)(transocks_client *);
 
 /* detailed type */
 typedef struct transocks_pump_t {
@@ -29,8 +29,8 @@ typedef struct transocks_pump_t {
 
 /* exported functions */
 
-int transocks_pump_init(transocks_global_env *env);
+int transocks_pump_init(transocks_global_env *);
 
-int transocks_start_pump(transocks_client **ppclient);
+int transocks_start_pump(transocks_client *);
 
 #endif //TRANSOCKS_WONG_PUMP_H

@@ -47,6 +47,21 @@
 #define TRANSOCKS_BUFSIZE (4096)
 #define TRANSOCKS_IS_RETRIABLE(err) ((err) == EAGAIN || (err) == EWOULDBLOCK || (err) == EINTR)
 
+#define TRANSOCKS_FREE(free_fn, ptr)     \
+    do {                                 \
+        if ((ptr) != NULL) {             \
+            (free_fn)(ptr);              \
+        }                                \
+        (ptr) = NULL;                    \
+    } while (0)
+
+#define TRANSOCKS_CLOSE(fd)              \
+    do {                                 \
+        if (fd != -1) {                  \
+            close(fd);                   \
+        }                                \
+        (fd) = -1;                       \
+    } while (0)
 enum {
     GETOPT_VAL_LISTENERADDRPORT,
     GETOPT_VAL_SOCKS5ADDRPORT,

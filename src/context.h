@@ -74,9 +74,9 @@ typedef struct transocks_client_t {
 /* context structures util functions */
 
 transocks_global_env *transocks_global_env_new(void);
-void transocks_global_env_free(transocks_global_env **);
-transocks_client *transocks_client_new(transocks_global_env *env);
-void transocks_client_free(transocks_client **);
+void transocks_global_env_free(transocks_global_env *);
+transocks_client *transocks_client_new(transocks_global_env *);
+void transocks_client_free(transocks_client *);
 
 
 #endif //TRANSOCKS_WONG_CONTEXT_H

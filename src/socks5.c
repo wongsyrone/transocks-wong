@@ -11,11 +11,11 @@ static void relay_onconnect_eventcb(struct bufferevent *, short, void *);
 
 static void socks_on_server_connect_reply_readcb(struct bufferevent *, void *);
 
-static void socks_send_connect_request(transocks_client **);
+static void socks_send_connect_request(transocks_client *);
 
 static void socks_on_server_selected_method_readcb(struct bufferevent *, void *);
 
-static void socks_send_method_selection(transocks_client **);
+static void socks_send_method_selection(transocks_client *);
 
 
 /*
@@ -23,19 +23,19 @@ static void socks_send_method_selection(transocks_client **);
  * thus treats any EOF as error
  */
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
-    transocks_client **ppclient = (transocks_client **) userArg;
+    transocks_client *pclient = (transocks_client *) userArg;
     if ((bevs & BEV_EVENT_EOF) == BEV_EVENT_EOF
         || (bevs & BEV_EVENT_ERROR) == BEV_EVENT_ERROR) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("socks error %d (%s)", err, evutil_socket_error_to_string(err));
-        transocks_client_free(ppclient);
+        TRANSOCKS_FREE(transocks_client_free, pclient);
     }
 }
 
 static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *userArg) {
     LOGI("socks_on_server_connect_reply_readcb");
-    transocks_client **ppclient = (transocks_client **) userArg;
-    struct bufferevent *relay_bev = (*ppclient)->relay_bev;
+    transocks_client *pClient = (transocks_client *) userArg;
+    struct bufferevent *relay_bev = pClient->relay_bev;
     struct evbuffer *input = bufferevent_get_input(relay_bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 10) {
@@ -64,21 +64,20 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
             LOGE("atyp domain should not happen");
             goto freeClient;
     }
-    (*ppclient)->client_state = client_socks5_finish_handshake;
-    LOGI("before pump, %d", (int)evbuffer_get_length(input));
-    if (transocks_start_pump(ppclient) != 0)
+    pClient->client_state = client_socks5_finish_handshake;
+    LOGI("before pump, %d", (int) evbuffer_get_length(input));
+    if (transocks_start_pump(pClient) != 0)
         goto freeClient;
 
 
     return;
 
     freeClient:
-    transocks_client_free(ppclient);
+    TRANSOCKS_FREE(transocks_client_free, pClient);
 }
 
-static void socks_send_connect_request(transocks_client **ppclient) {
+static void socks_send_connect_request(transocks_client *pclient) {
     LOGI("socks_send_connect_request");
-    transocks_client *pclient = *ppclient;
     struct bufferevent *relay_bev = pclient->relay_bev;
     struct socks_request_ipv4 req_ip4;
     struct socks_request_ipv6 req_ip6;
@@ -116,19 +115,19 @@ static void socks_send_connect_request(transocks_client **ppclient) {
     // VER + REP + RSV + ATYP + 4-byte ipv4 ADDR + 2-byte port
     // (should not reply with domain, iptables has ip address only)
     bufferevent_setwatermark(relay_bev, EV_READ, 10, TRANSOCKS_BUFSIZE);
-    bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, ppclient);
+    bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_disable(relay_bev, EV_WRITE);
     bufferevent_enable(relay_bev, EV_READ);
 
     return;
 
     freeClient:
-    transocks_client_free(ppclient);
+    TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
     LOGI("socks_on_server_selected_method_readcb");
-    transocks_client **ppclient = (transocks_client **) userArg;
+    transocks_client *pclient = (transocks_client *) userArg;
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 2) {
@@ -150,17 +149,16 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void
         goto freeClient;
     }
 
-    socks_send_connect_request(ppclient);
+    socks_send_connect_request(pclient);
     return;
 
     freeClient:
-    transocks_client_free(ppclient);
+    TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
-static void socks_send_method_selection(transocks_client **ppclient) {
+static void socks_send_method_selection(transocks_client *pclient) {
     LOGI("socks_send_method_selection");
     //wait for 2 bytes socks server selected method
-    transocks_client *pclient = *ppclient;
     struct bufferevent *relay_bev = pclient->relay_bev;
     struct socks_method_select_request req;
     req.ver = SOCKS5_VERSION;
@@ -168,29 +166,28 @@ static void socks_send_method_selection(transocks_client **ppclient) {
     req.methods[0] = SOCKS5_METHOD_NOAUTH;
     bufferevent_setwatermark(relay_bev, EV_READ, 2, TRANSOCKS_BUFSIZE);
     bufferevent_write(relay_bev, (const void *) &req, sizeof(struct socks_method_select_request));
-    bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, ppclient);
+    bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_disable(relay_bev, EV_WRITE);
     bufferevent_enable(relay_bev, EV_READ);
 }
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
-    transocks_client **ppclient = (transocks_client **) userArg;
-    transocks_client *pclient = *ppclient;
+    transocks_client *pclient = (transocks_client *) userArg;
     if (bevs & BEV_EVENT_CONNECTED) {
         /* We're connected */
         pclient->client_state = client_relay_connected;
-        socks_send_method_selection(ppclient);
+        socks_send_method_selection(pclient);
         return;
     } else if (bevs & BEV_EVENT_ERROR) {
         /* An error occured while connecting. */
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("connect relay %d (%s)", err, evutil_socket_error_to_string(err));
-        transocks_client_free(ppclient);
+        TRANSOCKS_FREE(transocks_client_free, pclient);
     }
 }
 
-void transocks_start_connect_relay(transocks_client **ppclient) {
-    transocks_global_env *env = (*ppclient)->global_env;
+void transocks_start_connect_relay(transocks_client *pClient) {
+    transocks_global_env *env = pClient->global_env;
     int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
     if (relay_fd < 0) {
         LOGE_ERRNO("fail to create socket");
@@ -209,7 +206,7 @@ void transocks_start_connect_relay(transocks_client **ppclient) {
         goto closeFd;
     }
 
-    (*ppclient)->relayFd = relay_fd;
+    pClient->relayFd = relay_fd;
 
     // create relay bev
     struct bufferevent *relay_bev = bufferevent_socket_new(env->eventBaseLoop,
@@ -219,10 +216,11 @@ void transocks_start_connect_relay(transocks_client **ppclient) {
         LOGE("bufferevent_socket_new");
         goto closeFd;
     }
-    (*ppclient)->relay_bev = relay_bev;
+    pClient->relay_bev = relay_bev;
 
-    bufferevent_setcb(relay_bev, NULL, NULL, relay_onconnect_eventcb, ppclient);
-    if (bufferevent_socket_connect(relay_bev, (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
+    bufferevent_setcb(pClient->relay_bev, NULL, NULL, relay_onconnect_eventcb, pClient);
+    if (bufferevent_socket_connect(pClient->relay_bev,
+                                   (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");
         goto freeBev;
     }
@@ -231,11 +229,11 @@ void transocks_start_connect_relay(transocks_client **ppclient) {
     return;
 
     freeBev:
-    bufferevent_free(relay_bev);
+    TRANSOCKS_FREE(bufferevent_free, relay_bev);
 
     closeFd:
-    close(relay_fd);
+    TRANSOCKS_CLOSE(relay_fd);
 
     freeClient:
-    transocks_client_free(ppclient);
+    TRANSOCKS_FREE(transocks_client_free, pClient);
 }

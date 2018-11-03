@@ -91,17 +91,17 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     pclient->client_bev = client_bev;
 
     // start connecting SOCKS5 relay
-    transocks_start_connect_relay(&pclient);
+    transocks_start_connect_relay(pclient);
     return;
 
     freeBev:
-    bufferevent_free(client_bev);
+    TRANSOCKS_FREE(bufferevent_free, client_bev);
 
     freeClient:
-    transocks_client_free(&pclient);
+    TRANSOCKS_FREE(transocks_client_free, pclient);
 
     freeFd:
-    close(clientFd);
+    TRANSOCKS_CLOSE(clientFd);
 }
 
 int listener_init(transocks_global_env *env) {
@@ -156,15 +156,15 @@ int listener_init(transocks_global_env *env) {
     return 0;
 
     closeFd:
-    close(fd);
+    TRANSOCKS_CLOSE(fd);
 
     return -1;
 }
 
 void listener_deinit(transocks_global_env *env) {
+    if (env == NULL) return;
     if (env->listener != NULL) {
         evconnlistener_disable(env->listener);
-        evconnlistener_free(env->listener);
-        env->listener = NULL;
+        TRANSOCKS_FREE(evconnlistener_free, env->listener);
     }
 }
