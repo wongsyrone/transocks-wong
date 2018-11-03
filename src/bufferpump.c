@@ -53,7 +53,6 @@ static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
 static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
-    bufferevent_disable(pclient->relay_bev, EV_WRITE);
     // check client close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->relay_bev))
         && TRANSOCKS_CHKBIT(pclient->client_shutdown_how, EV_READ)) {

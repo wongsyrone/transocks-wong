@@ -356,12 +356,6 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (event_add(pump->relay_read_ev, NULL) != 0) {
         goto fail;
     }
-    if (event_add(pump->client_write_ev, NULL) != 0) {
-        goto fail;
-    }
-    if (event_add(pump->relay_write_ev, NULL) != 0) {
-        goto fail;
-    }
     return 0;
 
     fail:
