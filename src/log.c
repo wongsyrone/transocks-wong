@@ -62,3 +62,14 @@ void _log_write(const char *file, int line, const char *func, int do_errno, int 
 
     va_end(ap);
 }
+
+#ifdef TRANSOCKS_DEBUG
+void dump_data(char *tag, char *text, int len)
+{
+    int i;
+    printf("%s: ", tag);
+    for (i = 0; i < len; i++)
+        printf("0x%02x ", (uint8_t)text[i]);
+    printf("\n");
+}
+#endif

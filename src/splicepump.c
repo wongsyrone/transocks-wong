@@ -60,7 +60,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
     bool client_can_read = true;
     bool is_pipe_full = ppump->outbound_pipe.data_in_pipe >= ppump->outbound_pipe.capacity;
     if (is_pipe_full) {
-        LOGD("pipe full")
+        LOGD("pipe full");
         return;
     }
     ssize_t bytesRead;
@@ -162,7 +162,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
     bool relay_can_read = true;
     bool is_pipe_full = ppump->inbound_pipe.data_in_pipe >= ppump->inbound_pipe.capacity;
     if (is_pipe_full) {
-        LOGD("pipe full")
+        LOGD("pipe full");
         return;
     }
     ssize_t bytesRead;

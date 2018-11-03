@@ -35,7 +35,7 @@ static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, voi
 
 static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *userArg) {
     TRANSOCKS_UNUSED(bev);
-    LOGI("socks_on_server_connect_reply_readcb");
+    LOGD("enter");
     transocks_client *pClient = (transocks_client *) userArg;
     struct bufferevent *relay_bev = pClient->relay_bev;
     struct evbuffer *input = bufferevent_get_input(relay_bev);
@@ -67,7 +67,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
             goto freeClient;
     }
     pClient->client_state = client_socks5_finish_handshake;
-    LOGI("before pump, %d", (int) evbuffer_get_length(input));
+    LOGD("before pump, %d", (int) evbuffer_get_length(input));
     // disable bufferevent until pump enable it again
     bufferevent_disable(relay_bev, EV_READ | EV_WRITE);
 
@@ -82,7 +82,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
 }
 
 static void socks_send_connect_request(transocks_client *pclient) {
-    LOGI("socks_send_connect_request");
+    LOGD("enter");
     struct bufferevent *relay_bev = pclient->relay_bev;
     struct socks_request_ipv4 *req_ip4 = NULL;
     struct socks_request_ipv6 *req_ip6 = NULL;
@@ -99,7 +99,8 @@ static void socks_send_connect_request(transocks_client *pclient) {
         req_ip4->port = sa_ip4->sin_port;
         assert(sizeof(struct socks_request_ipv4) == 6 + 4);
         memcpy(&(req_ip4->addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
-        bufferevent_write(relay_bev, (const void *) &req_ip4, sizeof(req_ip4));
+        dump_data("socks_send_connect_request_v4", (char *)req_ip4, sizeof(struct socks_request_ipv4));
+        bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(free, req_ip4);
     } else if (pclient->destaddr->ss_family == AF_INET6) {
         req_ip6 = calloc(1, sizeof(struct socks_request_ipv6));
@@ -112,7 +113,8 @@ static void socks_send_connect_request(transocks_client *pclient) {
         req_ip6->port = sa_ip6->sin6_port;
         assert(sizeof(struct socks_request_ipv6) == 6 + 16);
         memcpy(&(req_ip6->addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
-        bufferevent_write(relay_bev, (const void *) &req_ip6, sizeof(req_ip6));
+        dump_data("socks_send_connect_request_v6", (char *)req_ip6, sizeof(struct socks_request_ipv6));
+        bufferevent_write(relay_bev, (const void *) req_ip6, sizeof(struct socks_request_ipv6));
         TRANSOCKS_FREE(free, req_ip6);
     } else {
         LOGE("unknown ss_family");
@@ -132,7 +134,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
 }
 
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
-    LOGI("socks_on_server_selected_method_readcb");
+    LOGD("enter");
     transocks_client *pclient = (transocks_client *) userArg;
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
@@ -154,7 +156,10 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void
         LOGE("fail to drain 2bytes server_selected_method");
         goto freeClient;
     }
-
+    if (evbuffer_get_length(bufferevent_get_input(bev)) != 0) {
+        LOGE("still has data in the relay bev input buffer");
+        goto freeClient;
+    }
     socks_send_connect_request(pclient);
     return;
 
@@ -163,7 +168,7 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void
 }
 
 static void socks_send_method_selection(transocks_client *pclient) {
-    LOGI("socks_send_method_selection");
+    LOGD("enter");
     //wait for 2 bytes socks server selected method
     struct bufferevent *relay_bev = pclient->relay_bev;
     struct socks_method_select_request req;
@@ -194,7 +199,9 @@ static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *u
     }
 }
 
+// TODO: connect timeout
 void transocks_start_connect_relay(transocks_client *pClient) {
+    LOGD("enter");
     transocks_global_env *env = pClient->global_env;
     int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
     if (relay_fd < 0) {

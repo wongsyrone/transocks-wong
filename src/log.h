@@ -16,10 +16,16 @@ enum LOGLEVEL {
     LOG_DEBUG
 };
 
+#ifdef TRANSOCKS_DEBUG
+void dump_data(char *tag, char *text, int len);
+#else
+#define dump_data(tag, text, len)
+#endif
+
 #define log_errno(prio, msg...) _log_write(__FILE__, __LINE__, __func__, 1, prio, ## msg)
 #define log_error(prio, msg...) _log_write(__FILE__, __LINE__, __func__, 0, prio, ## msg)
 
-#ifdef DEBUG
+#ifdef TRANSOCKS_DEBUG
 #define LOGD(msg...) log_error(LOG_DEBUG, msg)
 #define LOGD_ERRNO(msg...) log_errno(LOG_DEBUG, msg)
 #else

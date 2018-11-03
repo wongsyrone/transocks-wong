@@ -182,7 +182,4 @@ void print_help() {
     fprintf(stdout, "\t Address must in this format:\n");
     fprintf(stdout, "\t\t - [IPv6Address]\n");
     fprintf(stdout, "\t\t - IPv4Address\n");
-
 }
-
-
