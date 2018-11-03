@@ -80,7 +80,7 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
 
 void transocks_client_free(transocks_client *pClient) {
     if (pClient == NULL) return;
-
+    LOGI("enter");
     /* check and shutdown if haven't */
     if (pClient->client_state != client_new && pClient->client_state != client_INVALID) {
         transocks_shutdown_how_t client_shut_inverse = (pClient->client_shutdown_how) ^ TRANSOCKS_SHUTDOWN_MASK;
@@ -124,7 +124,6 @@ void transocks_client_free(transocks_client *pClient) {
 
     TRANSOCKS_CLOSE(pClient->clientFd);
     TRANSOCKS_CLOSE(pClient->relayFd);
-    pClient->user_arg = NULL;
     TRANSOCKS_FREE(free, pClient);
 }
 

@@ -27,8 +27,8 @@ typedef struct transocks_splicepump_t {
     struct event *client_write_ev;
     struct event *relay_read_ev;
     struct event *relay_write_ev;
-    struct transocks_splicepipe_t inbound_pipe;  // relay -> client
-    struct transocks_splicepipe_t outbound_pipe; // client -> relay
+    transocks_splicepipe *inbound_pipe;  // relay -> client
+    transocks_splicepipe *outbound_pipe; // client -> relay
 } transocks_splicepump;
 
 

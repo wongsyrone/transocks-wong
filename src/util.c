@@ -8,22 +8,19 @@
 
 void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct sockaddr *sa, socklen_t socklen) {
     char unknown[] = "???:???";
-    char ipstr[INET6_ADDRSTRLEN];
+    char ipstr[INET6_ADDRSTRLEN] = {0};
     uint16_t port;
-    const char *parsed;
 
     if (socklen == sizeof(struct sockaddr_in) || sa->sa_family == AF_INET) {
         const struct sockaddr_in *in = (const struct sockaddr_in *) sa;
-        parsed = inet_ntop(AF_INET, &(in->sin_addr), ipstr, INET_ADDRSTRLEN);
-        if (parsed == NULL) {
+        if (inet_ntop(AF_INET, &(in->sin_addr), ipstr, INET_ADDRSTRLEN) == NULL) {
             LOGE_ERRNO("inet_ntop");
         }
         port = ntohs(in->sin_port);
         snprintf(outstrbuf, strbufsize, "%s:%d", ipstr, port);
     } else if (socklen == sizeof(struct sockaddr_in6) || sa->sa_family == AF_INET6) {
         const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *) sa;
-        parsed = inet_ntop(AF_INET6, &(in6->sin6_addr), ipstr, INET6_ADDRSTRLEN);
-        if (parsed == NULL) {
+        if (inet_ntop(AF_INET6, &(in6->sin6_addr), ipstr, INET6_ADDRSTRLEN) == NULL) {
             LOGE_ERRNO("inet_ntop");
         }
         port = ntohs(in6->sin6_port);
