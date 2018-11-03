@@ -85,9 +85,9 @@ int setnonblocking(int fd, bool isenable) {
         return -1;
     }
     if (isenable) {
-        flags |= O_NONBLOCK;
+        TRANSOCKS_SETBIT(flags, O_NONBLOCK);
     } else {
-        flags &= ~O_NONBLOCK;
+        TRANSOCKS_CLRBIT(flags, O_NONBLOCK);
     }
     if (fcntl(fd, F_SETFL, flags) != 0) {
         LOGE_ERRNO("fcntl F_SETFL %x", flags);

@@ -46,6 +46,7 @@
 
 #define TRANSOCKS_CHKBIT(val, flag) (((val) & (flag)) == (flag))
 #define TRANSOCKS_SETBIT(val, flag) ((val) |= (flag))
+#define TRANSOCKS_CLRBIT(val, flag) ((val) &= ~(flag))
 #define TRANSOCKS_BUFSIZE (4096)
 #define TRANSOCKS_IS_RETRIABLE(err) ((err) == EAGAIN || (err) == EWOULDBLOCK || (err) == EINTR)
 
