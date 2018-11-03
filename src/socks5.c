@@ -66,6 +66,9 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
     }
     pClient->client_state = client_socks5_finish_handshake;
     LOGI("before pump, %d", (int) evbuffer_get_length(input));
+    // disable bufferevent until pump enable it again
+    bufferevent_disable(relay_bev, EV_READ | EV_WRITE);
+
     if (transocks_start_pump(pClient) != 0)
         goto freeClient;
 
@@ -116,7 +119,6 @@ static void socks_send_connect_request(transocks_client *pclient) {
     // (should not reply with domain, iptables has ip address only)
     bufferevent_setwatermark(relay_bev, EV_READ, 10, TRANSOCKS_BUFSIZE);
     bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, pclient);
-    bufferevent_disable(relay_bev, EV_WRITE);
     bufferevent_enable(relay_bev, EV_READ);
 
     return;
@@ -167,7 +169,6 @@ static void socks_send_method_selection(transocks_client *pclient) {
     bufferevent_setwatermark(relay_bev, EV_READ, 2, TRANSOCKS_BUFSIZE);
     bufferevent_write(relay_bev, (const void *) &req, sizeof(struct socks_method_select_request));
     bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, pclient);
-    bufferevent_disable(relay_bev, EV_WRITE);
     bufferevent_enable(relay_bev, EV_READ);
 }
 
