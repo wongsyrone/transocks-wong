@@ -30,31 +30,6 @@ void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct
     }
 }
 
-int apply_tcp_keepalive(int fd) {
-    if (fd < 0) return -1;
-    int keepAlive = 1;
-    int keepIdle = 40;
-    int keepInterval = 20;
-    int keepCount = 5;
-    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &keepAlive, sizeof(keepAlive)) < 0) {
-        LOGE_ERRNO("fail to set SO_KEEPALIVE");
-        return -1;
-    }
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *) &keepIdle, sizeof(keepIdle)) < 0) {
-        LOGE_ERRNO("fail to set TCP_KEEPIDLE");
-        return -1;
-    }
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *) &keepInterval, sizeof(keepInterval)) < 0) {
-        LOGE_ERRNO("fail to set SO_KEEPALIVE");
-        return -1;
-    }
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (void *) &keepCount, sizeof(keepCount)) < 0) {
-        LOGE_ERRNO("fail to set SO_KEEPALIVE");
-        return -1;
-    }
-    return 0;
-}
-
 int apply_ipv6only(int fd, int on) {
     if (fd < 0) return -1;
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (void *) &on, sizeof(int)) < 0) {

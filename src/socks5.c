@@ -212,10 +212,6 @@ void transocks_start_connect_relay(transocks_client *pClient) {
         LOGE("fail to set non-blocking");
         goto closeFd;
     }
-    if (apply_tcp_keepalive(relay_fd) != 0) {
-        LOGE("fail to set TCP keepalive");
-        goto closeFd;
-    }
     if (apply_tcp_nodelay(relay_fd) != 0) {
         LOGE("fail to set TCP nodelay");
         goto closeFd;

@@ -31,10 +31,6 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
         goto freeFd;
     }
 
-    if (apply_tcp_keepalive(clientFd) != 0) {
-        LOGE("fail to set TCP keepalive");
-        goto freeFd;
-    }
     if (apply_tcp_nodelay(clientFd) != 0) {
         LOGE("fail to set TCP nodelay");
         goto freeFd;
