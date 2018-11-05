@@ -57,7 +57,7 @@ static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->relay_bev))
         && pclient->client_shutdown_read) {
         pclient->relay_shutdown_write = true;
-        if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
     }
@@ -85,7 +85,7 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->client_bev))
         && pclient->relay_shutdown_read) {
         pclient->client_shutdown_write = true;
-        if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
     }
@@ -105,7 +105,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         // read eof
         pclient->client_shutdown_read = true;
         bufferevent_disable(pclient->client_bev, EV_READ);
-        if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_RD) < 0) {
             LOGE_ERRNO("client shutdown read err");
         }
         return;
@@ -116,7 +116,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         // write eof
         pclient->client_shutdown_write = true;
         bufferevent_disable(pclient->client_bev, EV_WRITE);
-        if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
         return;
@@ -137,7 +137,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         // read eof
         pclient->relay_shutdown_read = true;
         bufferevent_disable(pclient->relay_bev, EV_READ);
-        if (shutdown(pclient->relayFd, SHUT_RD) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read err");
         }
         return;
@@ -148,7 +148,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         // write eof
         pclient->relay_shutdown_write = true;
         bufferevent_disable(pclient->relay_bev, EV_WRITE);
-        if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
+        if (TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
         return;

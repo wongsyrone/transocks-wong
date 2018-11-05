@@ -106,20 +106,20 @@ void transocks_client_free(transocks_client *pClient) {
         bool relay_shutdown_write_inverse = !pClient->relay_shutdown_write;
         if (pClient->clientFd != -1) {
             if (client_shutdown_read_inverse && client_shutdown_write_inverse) {
-                shutdown(pClient->clientFd, SHUT_RDWR);
+                TRANSOCKS_SHUTDOWN(pClient->clientFd, SHUT_RDWR);
             } else if (client_shutdown_read_inverse) {
-                shutdown(pClient->clientFd, SHUT_RD);
+                TRANSOCKS_SHUTDOWN(pClient->clientFd, SHUT_RD);
             } else if (client_shutdown_write_inverse) {
-                shutdown(pClient->clientFd, SHUT_WR);
+                TRANSOCKS_SHUTDOWN(pClient->clientFd, SHUT_WR);
             }
         }
         if (pClient->relayFd != -1) {
             if (relay_shutdown_read_inverse && relay_shutdown_write_inverse) {
-                shutdown(pClient->relayFd, SHUT_RDWR);
+                TRANSOCKS_SHUTDOWN(pClient->relayFd, SHUT_RDWR);
             } else if (relay_shutdown_read_inverse) {
-                shutdown(pClient->relayFd, SHUT_RD);
+                TRANSOCKS_SHUTDOWN(pClient->relayFd, SHUT_RD);
             } else if (relay_shutdown_write_inverse) {
-                shutdown(pClient->relayFd, SHUT_WR);
+                TRANSOCKS_SHUTDOWN(pClient->relayFd, SHUT_WR);
             }
         }
     }

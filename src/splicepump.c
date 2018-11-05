@@ -83,7 +83,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
     decide:
     if (!client_can_read) {
         pclient->client_shutdown_read = true;
-        shutdown(pclient->clientFd, SHUT_RD);
+        TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_RD);
         TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
         if (splicepump_check_close(pclient)) {
             TRANSOCKS_FREE(transocks_splicepump_free, pclient);
@@ -128,7 +128,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     decide:
     if (!relay_can_write) {
         pclient->client_shutdown_write = true;
-        shutdown(pclient->relayFd, SHUT_WR);
+        TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR);
         TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
         if (splicepump_check_close(pclient)) {
             TRANSOCKS_FREE(transocks_splicepump_free, pclient);
@@ -171,7 +171,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
     decide:
     if (!relay_can_read) {
         pclient->relay_shutdown_read = true;
-        shutdown(pclient->relayFd, SHUT_RD);
+        TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_RD);
         TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
         if (splicepump_check_close(pclient)) {
             TRANSOCKS_FREE(transocks_splicepump_free, pclient);
@@ -216,7 +216,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     decide:
     if (!client_can_write) {
         pclient->client_shutdown_write = true;
-        shutdown(pclient->clientFd, SHUT_WR);
+        TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR);
         TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
         if (splicepump_check_close(pclient)) {
             TRANSOCKS_FREE(transocks_splicepump_free, pclient);
