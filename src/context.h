@@ -24,13 +24,6 @@ enum transocks_client_state {
     client_INVALID
 };
 
-#define TRANSOCKS_SHUTDOWN_READ ((uint8_t)0x01)
-#define TRANSOCKS_SHUTDOWN_WRITE ((uint8_t)0x02)
-#define TRANSOCKS_SHUTDOWN_MASK (TRANSOCKS_SHUTDOWN_READ | TRANSOCKS_SHUTDOWN_WRITE)
-
-// which side of shutdown()
-typedef uint8_t transocks_shutdown_how_t;
-
 /* forward declaration */
 
 // global configuration and global environment
@@ -68,8 +61,10 @@ typedef struct transocks_client_t {
     struct bufferevent *relay_bev;  // relay output -> client input
     void *user_arg;
     enum transocks_client_state client_state;
-    transocks_shutdown_how_t client_shutdown_how;
-    transocks_shutdown_how_t relay_shutdown_how;
+    bool client_shutdown_read;
+    bool client_shutdown_write;
+    bool relay_shutdown_read;
+    bool relay_shutdown_write;
 } transocks_client;
 
 

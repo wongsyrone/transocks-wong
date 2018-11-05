@@ -54,16 +54,14 @@
 #define TRANSOCKS_FREE(free_fn, ptr)     \
     do {                                 \
         if ((ptr) != NULL) {             \
-            (free_fn)(ptr);              \
+            free_fn(ptr);              \
+            (ptr) = NULL;                \
         }                                \
-        (ptr) = NULL;                    \
     } while (0)
 
 #define TRANSOCKS_CLOSE(fd)              \
     do {                                 \
-        if (fd != -1) {                  \
-            close(fd);                   \
-        }                                \
+        close(fd);                       \
         (fd) = -1;                       \
     } while (0)
 enum {

@@ -69,6 +69,10 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->clientFd = -1;
     client->relayFd = -1;
     client->global_env = env;
+    client->client_shutdown_read = false;
+    client->client_shutdown_write = false;
+    client->relay_shutdown_read = false;
+    client->relay_shutdown_write = false;
     return client;
 
     fail:
@@ -81,37 +85,6 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
 void transocks_client_free(transocks_client *pClient) {
     if (pClient == NULL) return;
     LOGI("enter");
-    /* check and shutdown if haven't */
-    if (pClient->client_state != client_new && pClient->client_state != client_INVALID) {
-        transocks_shutdown_how_t client_shut_inverse = (pClient->client_shutdown_how) ^ TRANSOCKS_SHUTDOWN_MASK;
-        transocks_shutdown_how_t relay_shut_inverse = (pClient->relay_shutdown_how) ^ TRANSOCKS_SHUTDOWN_MASK;
-        if (pClient->clientFd != -1) {
-            if (TRANSOCKS_CHKBIT(client_shut_inverse, TRANSOCKS_SHUTDOWN_READ)
-                && TRANSOCKS_CHKBIT(client_shut_inverse, TRANSOCKS_SHUTDOWN_WRITE)) {
-                shutdown(pClient->clientFd, SHUT_RDWR);
-            } else if (TRANSOCKS_CHKBIT(client_shut_inverse, TRANSOCKS_SHUTDOWN_READ)) {
-                shutdown(pClient->clientFd, SHUT_RD);
-            } else if (TRANSOCKS_CHKBIT(client_shut_inverse, TRANSOCKS_SHUTDOWN_WRITE)) {
-                shutdown(pClient->clientFd, SHUT_WR);
-            }
-        }
-        if (pClient->relayFd != -1) {
-            if (TRANSOCKS_CHKBIT(relay_shut_inverse, TRANSOCKS_SHUTDOWN_READ)
-                && TRANSOCKS_CHKBIT(relay_shut_inverse, TRANSOCKS_SHUTDOWN_WRITE)) {
-                shutdown(pClient->relayFd, SHUT_RDWR);
-            } else if (TRANSOCKS_CHKBIT(relay_shut_inverse, TRANSOCKS_SHUTDOWN_READ)) {
-                shutdown(pClient->relayFd, SHUT_RD);
-            } else if (TRANSOCKS_CHKBIT(relay_shut_inverse, TRANSOCKS_SHUTDOWN_WRITE)) {
-                shutdown(pClient->relayFd, SHUT_WR);
-            }
-        }
-
-    }
-    TRANSOCKS_FREE(free, pClient->clientaddr);
-    TRANSOCKS_FREE(free, pClient->destaddr);
-
-    pClient->client_state = client_INVALID;
-
     if (pClient->relay_bev != NULL) {
         bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
     }
@@ -122,8 +95,43 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_FREE(bufferevent_free, pClient->relay_bev);
     TRANSOCKS_FREE(bufferevent_free, pClient->client_bev);
 
+    /*
+     * check and shutdown if haven't
+     * and ignore any error when calling shutdown()
+     */
+    if (pClient->client_state != client_new && pClient->client_state != client_INVALID) {
+        bool client_shutdown_read_inverse = !pClient->client_shutdown_read;
+        bool client_shutdown_write_inverse = !pClient->client_shutdown_write;
+        bool relay_shutdown_read_inverse = !pClient->relay_shutdown_read;
+        bool relay_shutdown_write_inverse = !pClient->relay_shutdown_write;
+        if (pClient->clientFd != -1) {
+            if (client_shutdown_read_inverse && client_shutdown_write_inverse) {
+                shutdown(pClient->clientFd, SHUT_RDWR);
+            } else if (client_shutdown_read_inverse) {
+                shutdown(pClient->clientFd, SHUT_RD);
+            } else if (client_shutdown_write_inverse) {
+                shutdown(pClient->clientFd, SHUT_WR);
+            }
+        }
+        if (pClient->relayFd != -1) {
+            if (relay_shutdown_read_inverse && relay_shutdown_write_inverse) {
+                shutdown(pClient->relayFd, SHUT_RDWR);
+            } else if (relay_shutdown_read_inverse) {
+                shutdown(pClient->relayFd, SHUT_RD);
+            } else if (relay_shutdown_write_inverse) {
+                shutdown(pClient->relayFd, SHUT_WR);
+            }
+        }
+    }
+
+    TRANSOCKS_FREE(free, pClient->clientaddr);
+    TRANSOCKS_FREE(free, pClient->destaddr);
+
+    pClient->client_state = client_INVALID;
+
     TRANSOCKS_CLOSE(pClient->clientFd);
     TRANSOCKS_CLOSE(pClient->relayFd);
+
     TRANSOCKS_FREE(free, pClient);
 }
 

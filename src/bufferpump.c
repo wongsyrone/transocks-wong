@@ -35,10 +35,10 @@ static void transocks_bufferpump_free(transocks_client *pclient) {
 }
 
 static inline bool transocks_check_close(transocks_client *pclient) {
-    return TRANSOCKS_CHKBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_READ)
-           && TRANSOCKS_CHKBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE)
-           && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_READ)
-           && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE);
+    return pclient->client_shutdown_read
+           && pclient->client_shutdown_write
+           && pclient->relay_shutdown_read
+           && pclient->relay_shutdown_write;
 }
 
 static void transocks_client_readcb(struct bufferevent *bev, void *userArg) {
@@ -55,8 +55,8 @@ static void transocks_relay_writecb(struct bufferevent *bev, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
     // check client close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->relay_bev))
-        && TRANSOCKS_CHKBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_READ)) {
-        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE);
+        && pclient->client_shutdown_read) {
+        pclient->relay_shutdown_write = true;
         if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
@@ -83,8 +83,8 @@ static void transocks_client_writecb(struct bufferevent *bev, void *userArg) {
     transocks_client *pclient = (transocks_client *) userArg;
     // check relay close
     if (0 == evbuffer_get_length(bufferevent_get_output(pclient->client_bev))
-        && TRANSOCKS_CHKBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_READ)) {
-        TRANSOCKS_SETBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE);
+        && pclient->relay_shutdown_read) {
+        pclient->client_shutdown_write = true;
         if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
@@ -103,7 +103,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
         // read eof
-        TRANSOCKS_SETBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_READ);
+        pclient->client_shutdown_read = true;
         bufferevent_disable(pclient->client_bev, EV_READ);
         if (shutdown(pclient->clientFd, SHUT_RD) < 0) {
             LOGE_ERRNO("client shutdown read err");
@@ -114,7 +114,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)
         && errno == ECONNRESET) {
         // write eof
-        TRANSOCKS_SETBIT(pclient->client_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE);
+        pclient->client_shutdown_write = true;
         bufferevent_disable(pclient->client_bev, EV_WRITE);
         if (shutdown(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
@@ -135,7 +135,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_READING)
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
         // read eof
-        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_READ);
+        pclient->relay_shutdown_read = true;
         bufferevent_disable(pclient->relay_bev, EV_READ);
         if (shutdown(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read err");
@@ -146,7 +146,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         && TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)
         && errno == ECONNRESET) {
         // write eof
-        TRANSOCKS_SETBIT(pclient->relay_shutdown_how, TRANSOCKS_SHUTDOWN_WRITE);
+        pclient->relay_shutdown_write = true;
         bufferevent_disable(pclient->relay_bev, EV_WRITE);
         if (shutdown(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
