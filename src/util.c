@@ -151,7 +151,7 @@ void print_help() {
     fprintf(stdout, "\t --socks5-addr-port     the SOCKS5 server address and port\n");
     fprintf(stdout, "\t --pump-method          " PUMPMETHOD_BUFFER "/" PUMPMETHOD_SPLICE "\n");
     fprintf(stdout, "\t --help                 this message\n");
-    fprintf(stdout, "\t Address must in this format:\n");
-    fprintf(stdout, "\t\t - [IPv6Address]\n");
-    fprintf(stdout, "\t\t - IPv4Address\n");
+    fprintf(stdout, "\t Address and port must in this format:\n");
+    fprintf(stdout, "\t\t - [IPv6Address]:Port\n");
+    fprintf(stdout, "\t\t - IPv4Address:Port\n");
 }
