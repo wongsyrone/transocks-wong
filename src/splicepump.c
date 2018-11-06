@@ -76,6 +76,12 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
             TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
             // not interested on the event anymore
             event_del(ppump->client_read_ev);
+            // if pipe is already empty, close the other side as well
+            if (ppump->outbound_pipe->data_in_pipe == 0) {
+                pclient->relay_shutdown_write = true;
+                TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR);
+                TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
+            }
         } else {
             // pipe full, let other side write
             event_active(ppump->relay_write_ev, EV_WRITE, 0);
@@ -172,6 +178,12 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
             TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
             // not interested on the event anymore
             event_del(ppump->relay_read_ev);
+            // if pipe is already empty, close the other side as well
+            if (ppump->inbound_pipe->data_in_pipe == 0) {
+                pclient->client_shutdown_write = true;
+                TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR);
+                TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
+            }
         } else {
             // pipe full, let other side write
             event_active(ppump->client_write_ev, EV_WRITE, 0);
