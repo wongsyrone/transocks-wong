@@ -74,6 +74,8 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
             pclient->client_shutdown_read = true;
             TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_RD);
             TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
+            // not interested on the event anymore
+            event_del(ppump->client_read_ev);
         } else {
             // pipe full, let other side write
             event_active(ppump->relay_write_ev, EV_WRITE, 0);
@@ -168,13 +170,15 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
             pclient->relay_shutdown_read = true;
             TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_RD);
             TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
+            // not interested on the event anymore
+            event_del(ppump->relay_read_ev);
         } else {
             // pipe full, let other side write
             event_active(ppump->client_write_ev, EV_WRITE, 0);
             return;
         }
     } else {
-        // get some data from client
+        // get some data from relay
         ppump->inbound_pipe->data_in_pipe += bytesRead;
     }
 
