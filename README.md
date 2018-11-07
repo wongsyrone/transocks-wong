@@ -6,6 +6,19 @@ netfilter_conntrack, iptables NAT/REDIRECT, modern Linux kernel with IPv6 suppor
 
 ## Usage
 
+Run `transocks-wong -h` to check help text. You can send `SIGHUP` to dump all connection we are handling,
+and send `SIGUSR1` to close all connection manually, it's equivalent to restart the program.
+
+As usual, send `SIGTERM` or `SIGINT` to terminate.
+
+example:
+
+```
+transocks-wong --listener-addr-port=[::]:8123 --socks5-addr-port=[::1]:1081 --pump-method=splicepump
+```
+
+## Other Tips
+
 DNSMasq can be used to add resolved ip address.
 ```
 # /etc/dnsmasq.conf
