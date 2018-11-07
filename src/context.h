@@ -86,4 +86,7 @@ void transocks_drop_all_clients(transocks_global_env *);
 
 void transocks_dump_all_client_info(transocks_global_env *);
 
+/* the tagfmt should NOT contain '\n' */
+void print_client_info(transocks_client *, const char *, ...);
+
 #endif //TRANSOCKS_WONG_CONTEXT_H

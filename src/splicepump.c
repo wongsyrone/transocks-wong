@@ -287,7 +287,7 @@ static void transocks_splicepump_free(transocks_client *pclient) {
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     if (ppump == NULL)
         return;
-    LOGI("enter");
+    LOGD("enter");
     event_del(ppump->client_read_ev);
     event_del(ppump->client_write_ev);
     event_del(ppump->relay_read_ev);
