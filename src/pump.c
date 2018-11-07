@@ -41,3 +41,7 @@ int transocks_start_pump(transocks_client *pclient) {
     pclient->client_state = client_pumping_data;
     return 0;
 }
+
+void transocks_pump_free(transocks_client *pclient) {
+    pumpMethodImpl->free_pump_fn(pclient);
+}

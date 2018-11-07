@@ -5,6 +5,7 @@
 #include "context.h"
 #include "listener.h"
 #include "signal.h"
+#include "pump.h"
 
 /*
  * context structure utility function strategy
@@ -30,6 +31,9 @@ transocks_global_env *transocks_global_env_new(void) {
         LOGE("fail to allocate event_base");
         goto fail;
     }
+
+    INIT_LIST_HEAD(&(env->clientDlinkList));
+
     return env;
 
     fail:
@@ -62,7 +66,8 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->client_state = client_new;
     client->clientaddr = calloc(1, sizeof(struct sockaddr_storage));
     client->destaddr = calloc(1, sizeof(struct sockaddr_storage));
-    if (client->clientaddr == NULL || client->destaddr == NULL) {
+    if (client->clientaddr == NULL
+        || client->destaddr == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
     }
@@ -132,10 +137,40 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_CLOSE(pClient->clientFd);
     TRANSOCKS_CLOSE(pClient->relayFd);
 
+    if (!list_empty(&pClient->dlinklistentry)) {
+        list_del(&(pClient->dlinklistentry));
+    }
+
     TRANSOCKS_FREE(free, pClient);
 }
 
+void transocks_drop_all_clients(transocks_global_env *env) {
+    transocks_client *pclient = NULL, *tmp = NULL;
+    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
+    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
 
+    list_for_each_entry_safe(pclient, tmp, &(env->clientDlinkList), dlinklistentry) {
+        generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (pclient->clientaddr), pclient->clientaddrlen);
+        generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (pclient->destaddr), pclient->destaddrlen);
+        fprintf(stdout, "close connection %s -> %s\n", srcaddrstr, destaddrstr);
+        transocks_pump_free(pclient);
+    }
+}
 
-
-
+void transocks_dump_all_client_info(transocks_global_env *env) {
+    transocks_client *pclient = NULL;
+    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
+    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
+    int i = 0;
+    fprintf(stdout, "transocks-wong connection info:\n");
+    list_for_each_entry(pclient, &(env->clientDlinkList), dlinklistentry) {
+        generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (pclient->clientaddr), pclient->clientaddrlen);
+        generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (pclient->destaddr), pclient->destaddrlen);
+        fprintf(stdout, "conn #%d: %s -> %s\n", i, srcaddrstr, destaddrstr);
+        ++i;
+    }
+}

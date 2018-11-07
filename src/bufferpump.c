@@ -190,4 +190,5 @@ static int transocks_bufferpump_start_pump(transocks_client *pclient) {
 transocks_pump transocks_bufferpump_ops = {
         .name = PUMPMETHOD_BUFFER,
         .start_pump_fn = transocks_bufferpump_start_pump,
+        .free_pump_fn = transocks_bufferpump_free
 };

@@ -88,6 +88,8 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
 
     pclient->client_bev = client_bev;
 
+    list_add(&(pclient->dlinklistentry), &(env->clientDlinkList));
+
     // start connecting SOCKS5 relay
     transocks_start_connect_relay(pclient);
     return;

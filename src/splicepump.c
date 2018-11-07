@@ -389,4 +389,5 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
 transocks_pump transocks_splicepump_ops = {
         .name = PUMPMETHOD_SPLICE,
         .start_pump_fn = transocks_splicepump_start_pump,
+        .free_pump_fn = transocks_splicepump_free
 };

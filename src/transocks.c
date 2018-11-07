@@ -123,6 +123,8 @@ int main(int argc, char **argv) {
     shutdown:
 
     // clean up before exit
+    transocks_drop_all_clients(globalEnv);
+    
     TRANSOCKS_FREE(transocks_global_env_free, globalEnv);
 
     return 0;

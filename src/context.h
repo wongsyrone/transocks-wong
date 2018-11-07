@@ -15,6 +15,7 @@
 
 #include "util.h"
 #include "log.h"
+#include "list.h"
 
 enum transocks_client_state {
     client_new,
@@ -45,11 +46,14 @@ typedef struct transocks_global_env_t {
     struct evconnlistener *listener;
     struct event *sigterm_ev;
     struct event *sigint_ev;
+    struct event *sighup_ev;
+    struct event *sigusr1_ev;
+    struct list_head clientDlinkList;   // double link list of client
 } transocks_global_env;
 
 
-
 typedef struct transocks_client_t {
+    struct list_head dlinklistentry;
     struct transocks_global_env_t *global_env;
     struct sockaddr_storage *clientaddr;   // accepted client addr
     struct sockaddr_storage *destaddr;     // accepted client destination addr (from iptables)
@@ -71,9 +75,15 @@ typedef struct transocks_client_t {
 /* context structures util functions */
 
 transocks_global_env *transocks_global_env_new(void);
+
 void transocks_global_env_free(transocks_global_env *);
+
 transocks_client *transocks_client_new(transocks_global_env *);
+
 void transocks_client_free(transocks_client *);
 
+void transocks_drop_all_clients(transocks_global_env *);
+
+void transocks_dump_all_client_info(transocks_global_env *);
 
 #endif //TRANSOCKS_WONG_CONTEXT_H
