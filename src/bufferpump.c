@@ -112,7 +112,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
         && ((TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR) && errno == ECONNRESET)
-             || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
+            || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF))) {
         // write eof
         pclient->client_shutdown_write = true;
         bufferevent_disable(pclient->client_bev, EV_WRITE);
@@ -150,7 +150,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
         && ((TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR) && errno == ECONNRESET)
-             || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)) {
+            || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF))) {
         // write eof
         pclient->relay_shutdown_write = true;
         bufferevent_disable(pclient->relay_bev, EV_WRITE);
