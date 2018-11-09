@@ -108,7 +108,7 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         if (TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_RD) < 0) {
             LOGE_ERRNO("client shutdown read err");
         }
-        return;
+        goto checkClose;
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
         && ((TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR) && errno == ECONNRESET)
@@ -119,11 +119,17 @@ static void transocks_client_eventcb(struct bufferevent *bev, short bevs, void *
         if (TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR) < 0) {
             LOGE_ERRNO("client shutdown write err");
         }
-        return;
+        goto checkClose;
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("client error %d (%s)", err, evutil_socket_error_to_string(err));
+        TRANSOCKS_FREE(transocks_bufferpump_free, pclient);
+        return;
+    }
+    checkClose:
+    if (transocks_check_close(pclient)) {
+        LOGD("passed close check");
         TRANSOCKS_FREE(transocks_bufferpump_free, pclient);
         return;
     }
@@ -140,7 +146,7 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         if (TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_RD) < 0) {
             LOGE_ERRNO("relay shutdown read err");
         }
-        return;
+        goto checkClose;
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_WRITING)
         && ((TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR) && errno == ECONNRESET)
@@ -151,11 +157,17 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
         if (TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR) < 0) {
             LOGE_ERRNO("relay shutdown write err");
         }
-        return;
+        goto checkClose;
     }
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
         LOGE("relay error %d (%s)", err, evutil_socket_error_to_string(err));
+        TRANSOCKS_FREE(transocks_bufferpump_free, pclient);
+        return;
+    }
+    checkClose:
+    if (transocks_check_close(pclient)) {
+        LOGD("passed close check");
         TRANSOCKS_FREE(transocks_bufferpump_free, pclient);
         return;
     }
