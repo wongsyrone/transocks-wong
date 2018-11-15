@@ -12,11 +12,9 @@ static void listener_cb(struct evconnlistener *, evutil_socket_t,
 
 static void listener_errcb(struct evconnlistener *listener, void *userArg) {
     TRANSOCKS_UNUSED(listener);
-    transocks_global_env *env = (transocks_global_env *) userArg;
+    TRANSOCKS_UNUSED(userArg);
     int err = EVUTIL_SOCKET_ERROR();
-    LOGE("listener error %d (%s)", err, evutil_socket_error_to_string(err));
-    if (event_base_loopbreak(env->eventBaseLoop) != 0)
-        LOGE("fail to event_base_loopbreak");
+    LOGE("listener accept() %d (%s)", err, evutil_socket_error_to_string(err));
 }
 
 static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientFd,
@@ -141,17 +139,12 @@ int listener_init(transocks_global_env *env) {
         goto closeFd;
     }
     env->listener = evconnlistener_new(env->eventBaseLoop, listener_cb, env,
-                                       LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_DISABLED, SOMAXCONN, fd);
+                                       LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, SOMAXCONN, fd);
     if (env->listener == NULL) {
         LOGE("fail to create listener");
         goto closeFd;
     }
     evconnlistener_set_error_cb(env->listener, listener_errcb);
-
-    if (evconnlistener_enable(env->listener) != 0) {
-        LOGE("fail to enable listener");
-        return -1;
-    }
 
     return 0;
 
