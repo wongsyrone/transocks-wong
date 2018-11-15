@@ -89,4 +89,11 @@ void transocks_dump_all_client_info(transocks_global_env *);
 /* the tagfmt should NOT contain '\n' */
 void print_client_info(transocks_client *, const char *, ...);
 
+#ifdef TRANSOCKS_DEBUG
+#define print_client_info_debug print_client_info
+#else
+#define print_client_info_debug(pclient, tagfmt, ...)
+#endif
+
+
 #endif //TRANSOCKS_WONG_CONTEXT_H

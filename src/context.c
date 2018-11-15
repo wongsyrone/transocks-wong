@@ -90,7 +90,7 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
 void transocks_client_free(transocks_client *pClient) {
     if (pClient == NULL) return;
 
-    print_client_info(pClient, "free a conn");
+    print_client_info_debug(pClient, "free a conn");
 
     if (pClient->relay_bev != NULL) {
         bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
