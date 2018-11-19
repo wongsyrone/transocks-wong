@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 
     globalEnv = transocks_global_env_new();
     if (globalEnv == NULL) {
-        goto shutdown;
+        goto bareExit;
     }
     if (signal_init(globalEnv) != 0) {
         goto shutdown;
@@ -130,6 +130,6 @@ int main(int argc, char **argv) {
     }
     // we are done, bye
     TRANSOCKS_FREE(transocks_global_env_free, globalEnv);
-
+    bareExit:
     return 0;
 }
