@@ -4,28 +4,29 @@
 
 #include "listener.h"
 
-static void listener_errcb(struct evconnlistener *, void *);
+static void listener_cb(evutil_socket_t, short, void *);
 
-static void listener_cb(struct evconnlistener *, evutil_socket_t,
-                        struct sockaddr *, int, void *);
-
-
-static void listener_errcb(struct evconnlistener *listener, void *userArg) {
-    TRANSOCKS_UNUSED(listener);
+static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
     transocks_global_env *env = (transocks_global_env *) userArg;
-    int err = EVUTIL_SOCKET_ERROR();
-    LOGE("listener accept() %d (%s)", err, evutil_socket_error_to_string(err));
-    if (event_base_loopbreak(env->eventBaseLoop) != 0)
-        LOGE("fail to event_base_loopbreak");
-}
-
-static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientFd,
-                        struct sockaddr *srcAddr, int srcSockLen, void *userArg) {
-    TRANSOCKS_UNUSED(listener);
-    transocks_global_env *env = (transocks_global_env *) userArg;
-    socklen_t typedSrcSockLen = (socklen_t) srcSockLen;
-
-
+    int clientFd;
+    struct sockaddr_storage acceptedSrcSockAddr;
+    socklen_t acceptedSrcSockLen = sizeof(struct sockaddr_storage);
+    clientFd = accept(env->listener->listenerFd,
+                      (struct sockaddr *) (&acceptedSrcSockAddr), &acceptedSrcSockLen);
+    if (clientFd < 0) {
+        if (TRANSOCKS_IS_RETRIABLE(errno)) {
+            // wait for next event
+            return;
+        } else {
+            LOGE_ERRNO("accept() err");
+            return;
+        }
+    }
+    if (acceptedSrcSockLen == 0) {
+        goto freeFd;
+    }
     if (setnonblocking(clientFd, true) != 0) {
         LOGE("fail to set nonblocking");
         goto freeFd;
@@ -49,10 +50,10 @@ static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientF
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) env->bindAddr, env->bindAddrLen);
 
-    pclient->clientaddrlen = typedSrcSockLen;
-    memcpy((void *) (pclient->clientaddr), (void *) srcAddr, typedSrcSockLen);
+    pclient->clientaddrlen = acceptedSrcSockLen;
+    memcpy((void *) (pclient->clientaddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) srcAddr, typedSrcSockLen);
+                               (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
 
 
     if (getorigdst(clientFd, pclient->destaddr, &pclient->destaddrlen) != 0) {
@@ -134,21 +135,40 @@ int listener_init(transocks_global_env *env) {
             goto closeFd;
         }
     }
-    // bind
-    err = bind(fd, (struct sockaddr *) env->bindAddr, env->bindAddrLen);
+
+    err = bind(fd, (struct sockaddr *) (env->bindAddr), env->bindAddrLen);
     if (err != 0) {
         LOGE_ERRNO("fail to bind");
         goto closeFd;
     }
-    env->listener = evconnlistener_new(env->eventBaseLoop, listener_cb, env,
-                                       LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, SOMAXCONN, fd);
-    if (env->listener == NULL) {
-        LOGE("fail to create listener");
+
+    err = listen(fd, SOMAXCONN);
+    if (err != 0) {
+        LOGE_ERRNO("fail to listen");
         goto closeFd;
     }
-    evconnlistener_set_error_cb(env->listener, listener_errcb);
+
+    env->listener = calloc(1, sizeof(struct transocks_listener_t));
+    if (env->listener == NULL) {
+        LOGE("fail to allocate memory");
+        goto closeFd;
+    }
+    env->listener->listenerFd = fd;
+    env->listener->listener_ev = event_new(env->eventBaseLoop, fd,
+                                           EV_READ | EV_PERSIST, listener_cb, env);
+    if (env->listener->listener_ev == NULL) {
+        LOGE("fail to allocate memory");
+        goto closeFd;
+    }
+    if (event_add(env->listener->listener_ev, NULL) != 0) {
+        LOGE("fail to add listener_ev");
+        goto freeListener;
+    }
 
     return 0;
+
+    freeListener:
+    listener_deinit(env);
 
     closeFd:
     TRANSOCKS_CLOSE(fd);
@@ -159,7 +179,11 @@ int listener_init(transocks_global_env *env) {
 void listener_deinit(transocks_global_env *env) {
     if (env == NULL) return;
     if (env->listener != NULL) {
-        evconnlistener_disable(env->listener);
-        TRANSOCKS_FREE(evconnlistener_free, env->listener);
+        if (env->listener->listener_ev != NULL) {
+            event_del(env->listener->listener_ev);
+            TRANSOCKS_FREE(event_free, env->listener->listener_ev);
+        }
+        TRANSOCKS_CLOSE(env->listener->listenerFd);
+        TRANSOCKS_FREE(free, env->listener);
     }
 }

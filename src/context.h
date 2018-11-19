@@ -34,6 +34,9 @@ typedef struct transocks_global_env_t transocks_global_env;
 // the client entity carrying essential metadata
 typedef struct transocks_client_t transocks_client;
 
+// the connection listener
+typedef struct transocks_listener_t transocks_listener;
+
 /* detailed declaration */
 
 typedef struct transocks_global_env_t {
@@ -43,7 +46,7 @@ typedef struct transocks_global_env_t {
     socklen_t bindAddrLen;              // listener addr socklen
     socklen_t relayAddrLen;             // SOCKS5 server addr socklen
     struct event_base *eventBaseLoop;
-    struct evconnlistener *listener;
+    transocks_listener *listener;
     struct event *sigterm_ev;
     struct event *sigint_ev;
     struct event *sighup_ev;
@@ -71,6 +74,10 @@ typedef struct transocks_client_t {
     bool relay_shutdown_write;
 } transocks_client;
 
+typedef struct transocks_listener_t {
+    int listenerFd;            // listener socket fd
+    struct event *listener_ev; // listener EV_READ
+} transocks_listener;
 
 /* context structures util functions */
 

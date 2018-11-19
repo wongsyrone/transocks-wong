@@ -146,7 +146,6 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_FREE(free, pClient);
 }
 
-
 void transocks_drop_all_clients(transocks_global_env *env) {
     transocks_client *pclient = NULL, *tmp = NULL;
 
