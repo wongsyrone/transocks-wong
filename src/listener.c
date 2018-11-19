@@ -12,9 +12,11 @@ static void listener_cb(struct evconnlistener *, evutil_socket_t,
 
 static void listener_errcb(struct evconnlistener *listener, void *userArg) {
     TRANSOCKS_UNUSED(listener);
-    TRANSOCKS_UNUSED(userArg);
+    transocks_global_env *env = (transocks_global_env *) userArg;
     int err = EVUTIL_SOCKET_ERROR();
     LOGE("listener accept() %d (%s)", err, evutil_socket_error_to_string(err));
+    if (event_base_loopbreak(env->eventBaseLoop) != 0)
+        LOGE("fail to event_base_loopbreak");
 }
 
 static void listener_cb(struct evconnlistener *listener, evutil_socket_t clientFd,
