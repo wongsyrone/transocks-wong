@@ -121,9 +121,14 @@ int main(int argc, char **argv) {
 
     shutdown:
 
-    // clean up before exit
+    // exit gracefully
     transocks_drop_all_clients(globalEnv);
-    
+    // report intentional event loop break
+    if (event_base_got_exit(globalEnv->eventBaseLoop)
+        || event_base_got_break(globalEnv->eventBaseLoop)) {
+        LOGE("exited event loop intentionally");
+    }
+    // we are done, bye
     TRANSOCKS_FREE(transocks_global_env_free, globalEnv);
 
     return 0;
