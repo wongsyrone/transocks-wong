@@ -42,7 +42,7 @@
 #define TRANSOCKS_SIZEOF_ARRAY(arr)        (sizeof(arr) / sizeof(arr[0]))
 #define TRANSOCKS_FOREACH(ptr, array)      for (ptr = array; ptr < array + TRANSOCKS_SIZEOF_ARRAY(array); ptr++)
 #define TRANSOCKS_FOREACH_REVERSE(ptr, array) for (ptr = array + TRANSOCKS_SIZEOF_ARRAY(array) - 1; ptr >= array; ptr--)
-#define TRANSOCKS_UNUSED(obj) ((void)obj)
+#define TRANSOCKS_UNUSED(obj) ((void)(obj))
 
 #define TRANSOCKS_CHKBIT(val, flag) (((val) & (flag)) == (flag))
 #define TRANSOCKS_SETBIT(val, flag) ((val) |= (flag))
