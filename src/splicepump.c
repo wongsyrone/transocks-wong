@@ -16,6 +16,13 @@
 
 #define TRANSOCKS_SPLICE_SHOULD_LOG_ERR(err) ((err) != EBADF && (err) != ENOTCONN)
 
+#define TRANSOCKS_EVENT_ACTIVE(ev, events)            \
+    do {                                              \
+        if (!event_pending((ev), (events), NULL)) {   \
+            event_active((ev), (events), 0);          \
+        }                                             \
+    } while (0)
+
 transocks_pump transocks_splicepump_ops;
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient);
@@ -91,7 +98,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         }
     } else {
         // other side can write
-        event_active(ppump->relay_write_ev, EV_WRITE, 0);
+        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
     }
 
     if (splicepump_check_close(pclient)) {
@@ -111,7 +118,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // self active to retry
-            event_active(ppump->relay_write_ev, EV_WRITE, 0);
+            TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
             return;
         } else {
             // error, should close
@@ -130,7 +137,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     if (pclient->client_shutdown_read) {
         if (ppump->outbound_pipe->data_in_pipe > 0) {
             // still has data and other side closed
-            event_active(ppump->relay_write_ev, EV_WRITE, 0);
+            TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
         } else {
             // other end closed
             pclient->relay_shutdown_write = true;
@@ -187,7 +194,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         }
     } else {
         // other side can write
-        event_active(ppump->client_write_ev, EV_WRITE, 0);
+        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
     }
 
     if (splicepump_check_close(pclient)) {
@@ -207,7 +214,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // self active to retry
-            event_active(ppump->client_write_ev, EV_WRITE, 0);
+            TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
             return;
         } else {
             // error
@@ -226,7 +233,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     if (pclient->relay_shutdown_read) {
         if (ppump->inbound_pipe->data_in_pipe > 0) {
             // still has data and other side closed
-            event_active(ppump->client_write_ev, EV_WRITE, 0);
+            TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
         } else {
             // other end closed
             pclient->client_shutdown_write = true;
@@ -344,7 +351,7 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (pump->client_read_ev == NULL) {
         goto fail;
     }
-    pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_WRITE | EV_PERSIST,
+    pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_WRITE,
                                       transocks_splicepump_client_writecb, pclient);
     if (pump->client_write_ev == NULL) {
         goto fail;
@@ -354,7 +361,7 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (pump->relay_read_ev == NULL) {
         goto fail;
     }
-    pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_WRITE | EV_PERSIST,
+    pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_WRITE,
                                      transocks_splicepump_relay_writecb, pclient);
     if (pump->relay_write_ev == NULL) {
         goto fail;
