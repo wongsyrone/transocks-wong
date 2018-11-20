@@ -7,7 +7,6 @@
 #include "pump.h"
 
 void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct sockaddr *sa, socklen_t socklen) {
-    char unknown[] = "???:???";
     char ipstr[INET6_ADDRSTRLEN];
     uint16_t port;
 
@@ -26,7 +25,7 @@ void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct
         port = ntohs(in6->sin6_port);
         snprintf(outstrbuf, strbufsize, "[%s]:%d", ipstr, port);
     } else {
-        snprintf(outstrbuf, strbufsize, "%s", unknown);
+        LOGE("unknown sa_family %d, socklen %d", sa->sa_family, socklen);
     }
 }
 
