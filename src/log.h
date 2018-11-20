@@ -5,8 +5,11 @@
 #ifndef TRANSOCKS_WONG_LOG_H
 #define TRANSOCKS_WONG_LOG_H
 
+#include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <time.h>
+#include <errno.h>
 
 #include "util.h"
 
@@ -22,8 +25,8 @@ void dump_data(char *tag, char *text, int len);
 #define dump_data(tag, text, len)
 #endif
 
-#define log_errno(prio, msg...) _log_write(__FILE__, __LINE__, __func__, 1, prio, ## msg)
-#define log_error(prio, msg...) _log_write(__FILE__, __LINE__, __func__, 0, prio, ## msg)
+#define log_errno(prio, msg...) _log_write(stderr, __FILE__, __LINE__, __func__, true, prio, ## msg)
+#define log_error(prio, msg...) _log_write(stderr, __FILE__, __LINE__, __func__, false, prio, ## msg)
 
 #ifdef TRANSOCKS_DEBUG
 #define LOGD(msg...) log_error(LOG_DEBUG, msg)
@@ -43,9 +46,9 @@ void dump_data(char *tag, char *text, int len);
 #define FATAL_WITH_HELPMSG(msg...) do { LOGE(msg); print_help(); exit(EXIT_FAILURE); } while(0)
 #define PRINTHELP_EXIT() do { print_help(); exit(EXIT_FAILURE); } while(0)
 
-void _log_write(const char *file, int line, const char *func, int do_errno, int priority, const char *fmt, ...)
+void _log_write(FILE *fd, const char *file, int line, const char *func, bool do_errno, int priority, const char *fmt, ...)
 #if defined(__GNUC__)
-__attribute__ (( format (printf, 6, 7) ))
+__attribute__ (( format (printf, 7, 8) ))
 #endif
 ;
 
