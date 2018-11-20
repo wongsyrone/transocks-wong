@@ -4,31 +4,33 @@
 
 #include "log.h"
 
-static const char* getprioname(int priority)
-{
+static const char *getprioname(int priority) {
     switch (priority) {
-        case LOG_ERR:     return "err";
-        case LOG_INFO:    return "info";
-        case LOG_DEBUG:   return "debug";
-        default:          return "?";
+        case LOG_ERR:
+            return "err";
+        case LOG_INFO:
+            return "info";
+        case LOG_DEBUG:
+            return "debug";
+        default:
+            return "?";
     }
 }
 
-void _log_write(FILE *fd, const char *file, int line, const char *func, bool do_errno, int priority, const char *fmt, ...)
-{
+void _log_write(FILE *fd, const char *file, int line, const char *func,
+                bool do_errno, int priority, const char *fmt, ...) {
     va_list ap;
-
     va_start(ap, fmt);
 
     int saved_errno = errno;
     struct timespec tv;
     clock_gettime(CLOCK_REALTIME, &tv);
 
-    /* XXX: there is no error-checking, IMHO it's better to lose messages
-     *      then to die and stop service */
     // header
-    const char* sprio = getprioname(priority);
-    fprintf(fd, "%ld.%6.6ld %s %s:%d %s() ", tv.tv_sec, tv.tv_nsec / 1000000, sprio, file, line, func);
+    const char *sprio = getprioname(priority);
+    fprintf(fd, "%ld.%6.6ld %s %s:%d %s() ", tv.tv_sec, tv.tv_nsec / 1000 /* to microseconds */,
+            sprio, file, line, func);
+
     // message
     vfprintf(fd, fmt, ap);
     va_end(ap);
