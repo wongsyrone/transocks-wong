@@ -168,8 +168,8 @@ void transocks_dump_all_client_info(transocks_global_env *env) {
 void print_client_info(transocks_client *pclient, const char *tagfmt, ...) {
     va_list args;
     va_start(args, tagfmt);
-    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
-    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
+    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
+    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) (pclient->clientaddr), pclient->clientaddrlen);
     generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,

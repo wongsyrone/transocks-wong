@@ -44,9 +44,9 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
         goto freeClient;
     }
 
-    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
-    char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
-    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN] = {0};
+    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
+    char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
+    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) env->bindAddr, env->bindAddrLen);
 

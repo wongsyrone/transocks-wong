@@ -8,7 +8,7 @@
 
 void generate_sockaddr_port_str(char *outstrbuf, size_t strbufsize, const struct sockaddr *sa, socklen_t socklen) {
     char unknown[] = "???:???";
-    char ipstr[INET6_ADDRSTRLEN] = {0};
+    char ipstr[INET6_ADDRSTRLEN];
     uint16_t port;
 
     if (socklen == sizeof(struct sockaddr_in) || sa->sa_family == AF_INET) {

@@ -25,9 +25,9 @@ int main(int argc, char **argv) {
     char *socks5AddrPort = NULL;
     char *pumpMethod = NULL;
 
-    struct sockaddr_storage listener_ss = {0};
+    struct sockaddr_storage listener_ss;
     socklen_t listener_ss_size;
-    struct sockaddr_storage socks5_ss = {0};
+    struct sockaddr_storage socks5_ss;
     socklen_t socks5_ss_size;
 
     static struct option long_options[] = {
