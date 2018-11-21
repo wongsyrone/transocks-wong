@@ -4,18 +4,11 @@
 
 #include "log.h"
 
-static const char *getprioname(int priority) {
-    switch (priority) {
-        case LOG_ERR:
-            return "err";
-        case LOG_INFO:
-            return "info";
-        case LOG_DEBUG:
-            return "debug";
-        default:
-            return "?";
-    }
-}
+static char *loglevel_str[] = {
+        [LOG_ERR] = "err",
+        [LOG_INFO] = "info",
+        [LOG_DEBUG] = "debug"
+};
 
 void _log_write(FILE *fd, const char *file, int line, const char *func,
                 bool do_errno, int priority, const char *fmt, ...) {
@@ -27,9 +20,8 @@ void _log_write(FILE *fd, const char *file, int line, const char *func,
     clock_gettime(CLOCK_REALTIME, &tv);
 
     // header
-    const char *sprio = getprioname(priority);
     fprintf(fd, "%ld.%6.6ld %s %s:%d %s() ", tv.tv_sec, tv.tv_nsec / 1000 /* to microseconds */,
-            sprio, file, line, func);
+            loglevel_str[priority], file, line, func);
 
     // message
     vfprintf(fd, fmt, ap);

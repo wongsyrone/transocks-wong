@@ -45,3 +45,14 @@ int transocks_start_pump(transocks_client *pclient) {
 void transocks_pump_free(transocks_client *pclient) {
     pumpMethodImpl->free_pump_fn(pclient);
 }
+
+void transocks_pump_dump_info(transocks_client *pclient, const char *tagfmt, ...) {
+    va_list args;
+    va_start(args, tagfmt);
+    fprintf(stdout, "\n----------\n");
+    vfprintf(stdout, tagfmt, args);
+    va_end(args);
+    fprintf(stdout, ":\n");
+    // pump specific dump info function
+    pumpMethodImpl->dump_info_fn(pclient);
+}

@@ -27,6 +27,11 @@ static void transocks_relay_eventcb(struct bufferevent *bev, short bevs, void *u
 
 static void transocks_bufferpump_free(transocks_client *pclient);
 
+static void transocks_bufferpump_dump_info(transocks_client *pclient);
+
+static void transocks_bufferpump_dump_info(transocks_client *pclient) {
+    transocks_client_dump_info(pclient);
+}
 
 static void transocks_bufferpump_free(transocks_client *pclient) {
     bufferevent_disable(pclient->client_bev, EV_READ | EV_WRITE);
@@ -219,5 +224,6 @@ static int transocks_bufferpump_start_pump(transocks_client *pclient) {
 transocks_pump transocks_bufferpump_ops = {
         .name = PUMPMETHOD_BUFFER,
         .start_pump_fn = transocks_bufferpump_start_pump,
-        .free_pump_fn = transocks_bufferpump_free
+        .free_pump_fn = transocks_bufferpump_free,
+        .dump_info_fn = transocks_bufferpump_dump_info
 };

@@ -36,6 +36,8 @@ static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient)
 
 static int getpipesize(int fd);
 
+static void transocks_splicepump_dump_info(transocks_client *pclient);
+
 static void transocks_splicepump_free(transocks_client *pclient);
 
 static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events, void *arg);
@@ -311,6 +313,23 @@ static void transocks_splicepump_free(transocks_client *pclient) {
     TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
+static void transocks_splicepump_dump_info(transocks_client *pclient) {
+    if (pclient == NULL)
+        return;
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    if (ppump == NULL)
+        return;
+    fprintf(stdout, "\n\tpipe:");
+    fprintf(stdout, "\n\t  IN: R %d W %d DATALEN %ld CAPACITY %ld",
+            ppump->inbound_pipe->pipe_readfd, ppump->inbound_pipe->pipe_writefd,
+            ppump->inbound_pipe->data_in_pipe, ppump->inbound_pipe->capacity);
+    fprintf(stdout, "\n\t  OUT: R %d W %d DATALEN %ld CAPACITY %ld",
+            ppump->outbound_pipe->pipe_readfd, ppump->outbound_pipe->pipe_writefd,
+            ppump->outbound_pipe->data_in_pipe, ppump->outbound_pipe->capacity);
+    // call outer func
+    transocks_client_dump_info(pclient);
+}
+
 static int transocks_splicepump_start_pump(transocks_client *pclient) {
     transocks_global_env *penv = pclient->global_env;
     int pipesz;
@@ -390,5 +409,6 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
 transocks_pump transocks_splicepump_ops = {
         .name = PUMPMETHOD_SPLICE,
         .start_pump_fn = transocks_splicepump_start_pump,
-        .free_pump_fn = transocks_splicepump_free
+        .free_pump_fn = transocks_splicepump_free,
+        .dump_info_fn = transocks_splicepump_dump_info
 };

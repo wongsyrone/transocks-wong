@@ -7,6 +7,14 @@
 #include "signal.h"
 #include "pump.h"
 
+static char *transocks_client_state_str[] = {
+        [client_new] = "client_new",
+        [client_relay_connected] = "client_relay_connected",
+        [client_socks5_finish_handshake] = "client_socks5_finish_handshake",
+        [client_pumping_data] = "client_pumping_data",
+        [client_INVALID] = "client_INVALID"
+};
+
 /*
  * context structure utility function strategy
  * only init essential member for the current layer
@@ -90,7 +98,7 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
 void transocks_client_free(transocks_client *pClient) {
     if (pClient == NULL) return;
 
-    print_client_info_debug(pClient, "free a conn");
+    transocks_pump_dump_info_debug(pClient, "free a conn");
 
     if (pClient->relay_bev != NULL) {
         bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
@@ -150,7 +158,7 @@ void transocks_drop_all_clients(transocks_global_env *env) {
     transocks_client *pclient = NULL, *tmp = NULL;
 
     list_for_each_entry_safe(pclient, tmp, &(env->clientDlinkList), dlinklistentry) {
-        print_client_info(pclient, "close connection");
+        transocks_pump_dump_info(pclient, "close connection");
         transocks_pump_free(pclient);
     }
 }
@@ -160,22 +168,25 @@ void transocks_dump_all_client_info(transocks_global_env *env) {
     int i = 0;
     fprintf(stdout, "transocks-wong connection info:\n");
     list_for_each_entry(pclient, &(env->clientDlinkList), dlinklistentry) {
-        print_client_info(pclient, "conn #%d", i);
+        transocks_pump_dump_info(pclient, "conn #%d", i);
         ++i;
     }
 }
 
-void print_client_info(transocks_client *pclient, const char *tagfmt, ...) {
-    va_list args;
-    va_start(args, tagfmt);
+void transocks_client_dump_info(transocks_client *pclient) {
     char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) (pclient->clientaddr), pclient->clientaddrlen);
     generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) (pclient->destaddr), pclient->destaddrlen);
-    vfprintf(stdout, tagfmt, args);
-    va_end(args);
-    fprintf(stdout, ": %s -> %s\n", srcaddrstr, destaddrstr);
-
+    fprintf(stdout, "\n\t%s -> %s", srcaddrstr, destaddrstr);
+    fprintf(stdout, "\n\tfd: client %d relay %d",
+            pclient->clientFd, pclient->relayFd);
+    fprintf(stdout, "\n\tclient shut R %d W %d",
+            pclient->client_shutdown_read, pclient->client_shutdown_write);
+    fprintf(stdout, "\n\trelay shut R %d W %d",
+            pclient->relay_shutdown_read, pclient->relay_shutdown_write);
+    fprintf(stdout, "\n\tclient state: %s", transocks_client_state_str[pclient->client_state]);
+    fprintf(stdout, "\n----------\n");
 }
