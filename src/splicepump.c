@@ -5,11 +5,18 @@
 #include "splicepump.h"
 
 /*
+ *   source socket => pipe write end => pipe read end => target socket
+ *  read socket EOF   write pipe EOF    read pipe EOF   write socket EOF
+ */
+
+/*
  * CONDITION: data_size_in_pipe and socket_can_keep_read_or_write
- * read socket EOF: pipe not full && splice() == 0
- * write pipe EOF: pipe is full(should not happen frequently, as long as we read from pipe as quick as possible)
- * read pipe EOF: other side shutdown && pipe is empty(aka nothing to do)
- * write socket EOF: pipe is empty && (splice_to_socket == 0 || socket errno == ECONNRESET)
+ * read socket EOF: pipe not full && splice_from_socket() == 0
+ * write pipe EOF: read socket EOF && pipe not full
+ *                 if pipe is full, let other side read
+ * read pipe EOF: splice_from_pipe() == 0 {aka pipe write end closed}
+ * write socket EOF: read pipe EOF && pipe is empty
+ *                   if pipe is not empty, self activate until all data been written to target socket
  * strategy: always enable EV_READ, let read callbacks control write callbacks, if error occured
  *           check shutdown_how and determine what to do next, handle pipe or handle socket
  */
@@ -98,7 +105,9 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         }
     } else {
         // other side can write
-        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+        if (!pclient->relay_shutdown_write) {
+            TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+        }
     }
 
     if (splicepump_check_close(pclient)) {
@@ -117,8 +126,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
                           (size_t) ppump->outbound_pipe->data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
-            // self active to retry
-            TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+            // pipe empty and write end of pipe not closed
             return;
         } else {
             // error, should close
@@ -128,24 +136,22 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
             return;
         }
     } else if (bytesWritten == 0) {
-        // no data in pipe
-    } else {
-        // get some data from pipe
-        ppump->outbound_pipe->data_in_pipe -= bytesWritten;
-    }
-
-    if (pclient->client_shutdown_read) {
+        // write end of pipe closed
         if (ppump->outbound_pipe->data_in_pipe > 0) {
             // still has data and other side closed
-            TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+            if (pclient->client_shutdown_read) {
+                TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+            }
         } else {
             // other end closed
             pclient->relay_shutdown_write = true;
             TRANSOCKS_SHUTDOWN(pclient->relayFd, SHUT_WR);
             TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
         }
+    } else {
+        // get some data from pipe
+        ppump->outbound_pipe->data_in_pipe -= bytesWritten;
     }
-
     if (splicepump_check_close(pclient)) {
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
@@ -194,7 +200,9 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         }
     } else {
         // other side can write
-        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+        if (!pclient->client_shutdown_write) {
+            TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+        }
     }
 
     if (splicepump_check_close(pclient)) {
@@ -213,8 +221,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
                           (size_t) ppump->inbound_pipe->data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
-            // self active to retry
-            TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+            // pipe empty and write end of pipe not closed
             return;
         } else {
             // error
@@ -224,24 +231,22 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
             return;
         }
     } else if (bytesWritten == 0) {
-        // no data in pipe
-    } else {
-        // get some data from pipe
-        ppump->inbound_pipe->data_in_pipe -= bytesWritten;
-    }
-
-    if (pclient->relay_shutdown_read) {
+        // write end of pipe closed
         if (ppump->inbound_pipe->data_in_pipe > 0) {
             // still has data and other side closed
-            TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+            if (pclient->relay_shutdown_read) {
+                TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+            }
         } else {
             // other end closed
             pclient->client_shutdown_write = true;
             TRANSOCKS_SHUTDOWN(pclient->clientFd, SHUT_WR);
             TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
         }
+    } else {
+        // get some data from pipe
+        ppump->inbound_pipe->data_in_pipe -= bytesWritten;
     }
-
     if (splicepump_check_close(pclient)) {
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
