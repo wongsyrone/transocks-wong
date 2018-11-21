@@ -76,6 +76,11 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
                        ppump->outbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
+            // if we have data in pipe, splice() cannot move page, we should
+            // empty the pipe as soon as possible
+            if (!pclient->relay_shutdown_write && ppump->outbound_pipe->data_in_pipe > 0) {
+                TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
+            }
             // return for next event
             return;
         } else {
@@ -171,6 +176,11 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
                        ppump->inbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
+            // if we have data in pipe, splice() cannot move page, we should
+            // empty the pipe as soon as possible
+            if (!pclient->client_shutdown_write && ppump->inbound_pipe->data_in_pipe > 0) {
+                TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
+            }
             // return for next event
             return;
         } else {
