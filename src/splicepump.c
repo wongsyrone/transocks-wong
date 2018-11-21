@@ -46,7 +46,8 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg);
 
-static inline bool splicepump_check_close(transocks_client *pclient) {
+TRANSOCKS_ALWAYS_INLINE
+static bool splicepump_check_close(transocks_client *pclient) {
     return pclient->client_shutdown_read
            && pclient->client_shutdown_write
            && pclient->relay_shutdown_read

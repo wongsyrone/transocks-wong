@@ -46,11 +46,7 @@ void dump_data(char *tag, char *text, int len);
 #define FATAL_WITH_HELPMSG(msg...) do { LOGE(msg); print_help(); exit(EXIT_FAILURE); } while(0)
 #define PRINTHELP_EXIT() do { print_help(); exit(EXIT_FAILURE); } while(0)
 
-void _log_write(FILE *fd, const char *file, int line, const char *func, bool do_errno, int priority, const char *fmt, ...)
-#if defined(__GNUC__)
-__attribute__ (( format (printf, 7, 8) ))
-#endif
-;
-
+TRANSOCKS_ATTR(format (printf, 7, 8))
+void _log_write(FILE *fd, const char *file, int line, const char *func, bool do_errno, int priority, const char *fmt, ...);
 
 #endif //TRANSOCKS_WONG_LOG_H

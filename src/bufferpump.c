@@ -34,7 +34,8 @@ static void transocks_bufferpump_free(transocks_client *pclient) {
     TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
-static inline bool transocks_check_close(transocks_client *pclient) {
+TRANSOCKS_ALWAYS_INLINE
+static bool transocks_check_close(transocks_client *pclient) {
     return pclient->client_shutdown_read
            && pclient->client_shutdown_write
            && pclient->relay_shutdown_read
