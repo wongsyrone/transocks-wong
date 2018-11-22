@@ -108,7 +108,7 @@ int setnonblocking(int, bool);
 
 int getorigdst(int, struct sockaddr_storage *, socklen_t *);
 
-bool validatePort(struct sockaddr_storage *);
+bool validateAddrPort(struct sockaddr_storage *);
 
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
 

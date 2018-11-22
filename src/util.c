@@ -105,15 +105,23 @@ int getorigdst(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen) {
     return 0;
 }
 
-bool validatePort(struct sockaddr_storage *ss) {
+bool validateAddrPort(struct sockaddr_storage *ss) {
+    struct sockaddr_in6 *in6 = NULL;
+    struct sockaddr_in *in = NULL;
     switch (ss->ss_family) {
         case AF_INET:
-            if (((struct sockaddr_in *) ss)->sin_port == 0) {
+            in = (struct sockaddr_in *) ss;
+            if (in->sin_port == 0) {
                 return false;
             }
             break;
         case AF_INET6:
-            if (((struct sockaddr_in6 *) ss)->sin6_port == 0) {
+            in6 = (struct sockaddr_in6 *) ss;
+            if (in6->sin6_port == 0) {
+                return false;
+            }
+            if (IN6_IS_ADDR_V4MAPPED(&(in6->sin6_addr))) {
+                LOGE("Please input IPv4 address directly");
                 return false;
             }
             break;
