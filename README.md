@@ -1,5 +1,12 @@
 # transocks-wong
 
+## Feature
+
+- IPv4 and IPv6 support, IPv6 works in dual stack mode
+- SOCKS5 works in noauth mode
+- Buffer copy via bufferevent provided by libevent
+- Zero copy via splice() syscall provided by modern Linux kernel
+
 ## Precondition
 
 netfilter_conntrack, iptables NAT/REDIRECT, modern Linux kernel with IPv6 support
@@ -11,10 +18,11 @@ and send `SIGUSR1` to close all connection manually, it's equivalent to restart 
 
 As usual, send `SIGTERM` or `SIGINT` to terminate.
 
-example:
+examples:
 
 ```
 transocks-wong --listener-addr-port=[::]:8123 --socks5-addr-port=[::1]:1081 --pump-method=splicepump
+transocks-wong --listener-addr-port=0.0.0.0:8123 --socks5-addr-port=127.0.0.1:1081
 ```
 
 ## Other Tips
