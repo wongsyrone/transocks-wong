@@ -151,14 +151,14 @@ int listener_init(transocks_global_env *env) {
     env->listener = calloc(1, sizeof(struct transocks_listener_t));
     if (env->listener == NULL) {
         LOGE("fail to allocate memory");
-        goto closeFd;
+        goto freeListener;
     }
     env->listener->listenerFd = fd;
     env->listener->listener_ev = event_new(env->eventBaseLoop, fd,
                                            EV_READ | EV_PERSIST, listener_cb, env);
     if (env->listener->listener_ev == NULL) {
         LOGE("fail to allocate memory");
-        goto closeFd;
+        goto freeListener;
     }
     if (event_add(env->listener->listener_ev, NULL) != 0) {
         LOGE("fail to add listener_ev");
