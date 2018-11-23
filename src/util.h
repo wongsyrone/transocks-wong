@@ -81,10 +81,12 @@
         }                                \
     } while (0)
 
-#define TRANSOCKS_CLOSE(fd)              \
-    do {                                 \
-        TEMP_FAILURE_RETRY(close(fd));   \
-        (fd) = -1;                       \
+#define TRANSOCKS_CLOSE(fd)                 \
+    do {                                    \
+        if ((fd) >= 0) {                    \
+            TEMP_FAILURE_RETRY(close(fd));  \
+            (fd) = -1;                      \
+        }                                   \
     } while (0)
 
 #define TRANSOCKS_SHUTDOWN(fd, how)             TEMP_FAILURE_RETRY(shutdown(fd, how))
