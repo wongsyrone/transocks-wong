@@ -85,7 +85,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
                        ppump->outbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
-            // if we have data in pipe, splice() cannot move page, we should
+            // if the pipe is almost full, splice() cannot move page, we should
             // empty the pipe as soon as possible
         } else {
             // error, should close
@@ -189,7 +189,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
                        ppump->inbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
-            // if we have data in pipe, splice() cannot move page, we should
+            // if the pipe is almost full, splice() cannot move page, we should
             // empty the pipe as soon as possible
         } else {
             // error, should close
