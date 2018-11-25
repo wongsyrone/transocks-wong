@@ -2,12 +2,13 @@
 
 ## Feature
 
+- Event-driven non-blocking I/O model
 - IPv4 and IPv6 support, IPv6 works in dual stack mode
 - SOCKS5 works in noauth mode
 - Buffer copy via bufferevent provided by libevent
 - Zero copy via splice() syscall provided by modern Linux kernel
 
-## Precondition
+## Prerequisite
 
 netfilter_conntrack, iptables NAT/REDIRECT, modern Linux kernel with IPv6 support
 
