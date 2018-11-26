@@ -7,6 +7,12 @@ addons:
     packages:
     - tree
     - cmake
+env:
+  matrix:
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=ON -DLibevent2_USE_STATIC_LIB=ON"
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=ON -DLibevent2_USE_STATIC_LIB=OFF"
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=ON"
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=OFF"
 before_install:
   - LIBEVENT_VER=2.1.8-stable
   - SRCDIR=$PWD
@@ -22,7 +28,7 @@ script:
   - echo $SRCDIR
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$SRCDIR/transocks-wong-bin" -DCMAKE_FIND_ROOT_PATH:PATH=$SRCDIR/libevent-install\;/usr $SRCDIR
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$SRCDIR/transocks-wong-bin" -DCMAKE_FIND_ROOT_PATH:PATH=$SRCDIR/libevent-install\;/usr $TRANSOCKS_OPTIONS ..
   - make install
   - tree $SRCDIR/transocks-wong-bin
   - ldd $SRCDIR/transocks-wong-bin/bin/transocks-wong
