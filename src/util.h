@@ -20,6 +20,7 @@
 #include <arpa/inet.h> /* inet_pton, inet_ntop */
 #include <sys/types.h>
 #include <sys/socket.h>  /* socket(), bind(),listen(), accept(),getsockopt() */
+#include <linux/if.h>                         /* For IFNAMSIZ. Silly Travis CI Ubuntu kernel */
 #include <linux/netfilter_ipv4.h>             /* SO_ORIGINAL_DST */
 #include <linux/netfilter_ipv6/ip6_tables.h>  /* IP6T_SO_ORIGINAL_DST */
 
