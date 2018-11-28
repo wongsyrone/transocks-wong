@@ -35,22 +35,30 @@ int apply_tcp_keepalive(int fd) {
     int keepIdle = 40;
     int keepInterval = 20;
     int keepCount = 5;
+#ifdef SO_KEEPALIVE
     if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &keepAlive, sizeof(keepAlive)) < 0) {
         LOGE_ERRNO("fail to set SO_KEEPALIVE");
         return -1;
     }
+#endif
+#ifdef TCP_KEEPIDLE
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *) &keepIdle, sizeof(keepIdle)) < 0) {
         LOGE_ERRNO("fail to set TCP_KEEPIDLE");
         return -1;
     }
+#endif
+#ifdef TCP_KEEPINTVL
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *) &keepInterval, sizeof(keepInterval)) < 0) {
-        LOGE_ERRNO("fail to set SO_KEEPALIVE");
+        LOGE_ERRNO("fail to set TCP_KEEPINTVL");
         return -1;
     }
+#endif
+#ifdef TCP_KEEPCNT
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, (void *) &keepCount, sizeof(keepCount)) < 0) {
-        LOGE_ERRNO("fail to set SO_KEEPALIVE");
+        LOGE_ERRNO("fail to set TCP_KEEPCNT");
         return -1;
     }
+#endif
     return 0;
 }
 
