@@ -32,6 +32,10 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
         goto freeFd;
     }
 
+    if (apply_tcp_keepalive(clientFd) != 0) {
+        LOGE("fail to set TCP keepalive");
+        goto freeFd;
+    }
     if (apply_tcp_nodelay(clientFd) != 0) {
         LOGE("fail to set TCP nodelay");
         goto freeFd;
