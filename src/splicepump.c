@@ -102,15 +102,14 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         // get some data from client
         ppump->outbound_pipe->data_in_pipe += bytesRead;
     }
-    if (!pclient->relay_shutdown_write) {
-        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
-    }
 
     if (splicepump_check_close(pclient)) {
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
+
+    TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
 }
 
 static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events, void *arg) {
@@ -124,7 +123,6 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // pipe empty and write end of pipe not closed
-            return;
         } else {
             // error, should close
             if (TRANSOCKS_SPLICE_SHOULD_LOG_ERR(errno))
@@ -139,14 +137,15 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         // get some data from pipe
         ppump->outbound_pipe->data_in_pipe -= bytesWritten;
     }
-    if (pclient->client_shutdown_read && ppump->outbound_pipe->data_in_pipe > 0) {
-        // self activate
-        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
-    }
+
     if (splicepump_check_close(pclient)) {
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
+    }
+    if (pclient->client_shutdown_read && !pclient->relay_shutdown_write) {
+        // self activate until EOF or error
+        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
     }
 }
 
@@ -179,15 +178,14 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         // get some data from relay
         ppump->inbound_pipe->data_in_pipe += bytesRead;
     }
-    if (!pclient->client_shutdown_write) {
-        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
-    }
 
     if (splicepump_check_close(pclient)) {
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
+
+    TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
 }
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg) {
@@ -201,7 +199,6 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // pipe empty and write end of pipe not closed
-            return;
         } else {
             // error, should close
             if (TRANSOCKS_SPLICE_SHOULD_LOG_ERR(errno))
@@ -216,14 +213,14 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         // get some data from pipe
         ppump->inbound_pipe->data_in_pipe -= bytesWritten;
     }
-    if (pclient->relay_shutdown_read && ppump->inbound_pipe->data_in_pipe > 0) {
-        // self activate
-        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
-    }
     if (splicepump_check_close(pclient)) {
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
+    }
+    if (pclient->relay_shutdown_read && !pclient->client_shutdown_write) {
+        // self activate until EOF or error
+        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
     }
 }
 
