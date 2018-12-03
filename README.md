@@ -28,15 +28,17 @@ transocks-wong --listener-addr-port=0.0.0.0:8123 --socks5-addr-port=127.0.0.1:10
 
 ## Other Tips
 
-DNSMasq can be used to add resolved ip address.
+DNSMasq can be used to add resolved ip address to the appropriate IPset.
 ```
 # /etc/dnsmasq.conf
 ipset=/<domain>/setmefree,setmefree6
 ```
 
-Use two IPset, one for IPv4, the other one for IPv6, to support both.
+Use two IPset, one for IPv4, the other one for IPv6, to enable us to
+redirect IPv4/IPv6 traffic simultaneously based on the matching result.
 ```
 ## /etc/firewall.user(OpenWrt)
+# This file is interpreted as shell script.
 # drop old one
 ipset -! destroy setmefree
 ipset -! destroy setmefree6
@@ -61,3 +63,9 @@ iptables -t nat -I PREROUTING -p tcp -m set --match-set setmefree dst -j REDIREC
 # requires ip6tables nat module
 ip6tables -t nat -I PREROUTING -p tcp -m set --match-set setmefree6 dst -j REDIRECT --to-port 8123
 ```
+
+## Credit to
+
+- [transocks-ev](http://oss.tiggerswelt.net/transocks_ev/)
+- [redsocks](https://github.com/darkk/redsocks)
+- [transocks](https://github.com/cybozu-go/transocks)
