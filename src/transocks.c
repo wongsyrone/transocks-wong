@@ -69,7 +69,6 @@ int main(int argc, char **argv) {
 
     // ignore SIGPIPE
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGABRT, SIG_IGN);
 
     if (transocks_parse_sockaddr_port(listenerAddrPort, (struct sockaddr *) &listener_ss, &listener_ss_size) != 0) {
         FATAL_WITH_HELPMSG("invalid listener address and port: %s", listenerAddrPort);
