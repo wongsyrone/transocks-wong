@@ -5,6 +5,8 @@
 #include "socks5.h"
 #include "pump.h"
 
+static void socks5_timeout_cb(evutil_socket_t, short, void *);
+
 static void socks_handshake_stage_errcb(struct bufferevent *, short, void *);
 
 static void relay_onconnect_eventcb(struct bufferevent *, short, void *);
@@ -18,6 +20,11 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *, void *)
 static void socks_send_method_selection(transocks_client *);
 
 
+static struct timeval socks5_timeout_tv = {
+        .tv_sec = 60,
+        .tv_usec = 0
+};
+
 /*
  * We assume socks5 server are listening on the loopback interface
  * thus treats any EOF as error
@@ -25,6 +32,7 @@ static void socks_send_method_selection(transocks_client *);
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
+    evtimer_del(pclient->timeout_ev);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)
         || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
@@ -37,6 +45,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
     TRANSOCKS_UNUSED(bev);
     LOGD("enter");
     transocks_client *pClient = (transocks_client *) userArg;
+    evtimer_del(pClient->timeout_ev);
     struct bufferevent *relay_bev = pClient->relay_bev;
     struct evbuffer *input = bufferevent_get_input(relay_bev);
     size_t input_read_size = evbuffer_get_length(input);
@@ -99,7 +108,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
         req_ip4->port = sa_ip4->sin_port;
         assert(sizeof(struct socks_request_ipv4) == 6 + 4);
         memcpy(&(req_ip4->addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
-        dump_data("socks_send_connect_request_v4", (char *)req_ip4, sizeof(struct socks_request_ipv4));
+        dump_data("socks_send_connect_request_v4", (char *) req_ip4, sizeof(struct socks_request_ipv4));
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(free, req_ip4);
     } else if (pclient->destaddr->ss_family == AF_INET6) {
@@ -113,7 +122,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
         req_ip6->port = sa_ip6->sin6_port;
         assert(sizeof(struct socks_request_ipv6) == 6 + 16);
         memcpy(&(req_ip6->addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
-        dump_data("socks_send_connect_request_v6", (char *)req_ip6, sizeof(struct socks_request_ipv6));
+        dump_data("socks_send_connect_request_v6", (char *) req_ip6, sizeof(struct socks_request_ipv6));
         bufferevent_write(relay_bev, (const void *) req_ip6, sizeof(struct socks_request_ipv6));
         TRANSOCKS_FREE(free, req_ip6);
     } else {
@@ -127,6 +136,8 @@ static void socks_send_connect_request(transocks_client *pclient) {
     bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
 
+    transocks_client_set_timeout(pclient, &socks5_timeout_tv, socks5_timeout_cb, pclient);
+
     return;
 
     freeClient:
@@ -136,6 +147,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
     LOGD("enter");
     transocks_client *pclient = (transocks_client *) userArg;
+    evtimer_del(pclient->timeout_ev);
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 2) {
@@ -179,11 +191,14 @@ static void socks_send_method_selection(transocks_client *pclient) {
     bufferevent_write(relay_bev, (const void *) &req, sizeof(struct socks_method_select_request));
     bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
+
+    transocks_client_set_timeout(pclient, &socks5_timeout_tv, socks5_timeout_cb, pclient);
 }
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
+    evtimer_del(pclient->timeout_ev);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_CONNECTED)) {
         /* We're connected */
         pclient->client_state = client_relay_connected;
@@ -199,7 +214,14 @@ static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *u
     }
 }
 
-// TODO: connect timeout
+static void socks5_timeout_cb(evutil_socket_t fd, short events, void *userArg) {
+    TRANSOCKS_UNUSED(fd);
+    TRANSOCKS_UNUSED(events);
+    transocks_client *pclient = (transocks_client *) userArg;
+    LOGE("timed out");
+    TRANSOCKS_FREE(transocks_client_free, pclient);
+}
+
 void transocks_start_connect_relay(transocks_client *pClient) {
     LOGD("enter");
     transocks_global_env *env = pClient->global_env;
@@ -235,6 +257,8 @@ void transocks_start_connect_relay(transocks_client *pClient) {
 
     bufferevent_setcb(pClient->relay_bev, NULL, NULL, relay_onconnect_eventcb, pClient);
     bufferevent_enable(pClient->relay_bev, EV_WRITE);
+
+    transocks_client_set_timeout(pClient, &socks5_timeout_tv, socks5_timeout_cb, pClient);
     if (bufferevent_socket_connect(pClient->relay_bev,
                                    (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");

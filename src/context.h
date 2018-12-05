@@ -66,6 +66,7 @@ typedef struct transocks_client_t {
     socklen_t destaddrlen;                 // accepted client destination addr socklen
     struct bufferevent *client_bev; // client output -> relay input
     struct bufferevent *relay_bev;  // relay output -> client input
+    struct event *timeout_ev;
     void *user_arg;
     enum transocks_client_state client_state;
     bool client_shutdown_read;
@@ -88,6 +89,8 @@ void transocks_global_env_free(transocks_global_env *);
 transocks_client *transocks_client_new(transocks_global_env *);
 
 void transocks_client_free(transocks_client *);
+
+int transocks_client_set_timeout(transocks_client *, const struct timeval *, event_callback_fn, void *);
 
 void transocks_drop_all_clients(transocks_global_env *);
 

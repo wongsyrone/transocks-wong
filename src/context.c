@@ -100,6 +100,11 @@ void transocks_client_free(transocks_client *pClient) {
 
     transocks_pump_dump_info_debug(pClient, "free a conn");
 
+    if (pClient->timeout_ev != NULL) {
+        evtimer_del(pClient->timeout_ev);
+    }
+    TRANSOCKS_FREE(event_free, pClient->timeout_ev);
+
     if (pClient->relay_bev != NULL) {
         bufferevent_disable(pClient->relay_bev, EV_READ | EV_WRITE);
     }
@@ -132,6 +137,27 @@ void transocks_client_free(transocks_client *pClient) {
     }
 
     TRANSOCKS_FREE(free, pClient);
+}
+
+int transocks_client_set_timeout(transocks_client *pclient, const struct timeval *timeout,
+                                 event_callback_fn ev_fn, void *arg) {
+    int ret;
+    if (pclient->timeout_ev == NULL) {
+        // first time
+        pclient->timeout_ev = evtimer_new(pclient->global_env->eventBaseLoop, ev_fn, arg);
+        if (pclient->timeout_ev == NULL) {
+            LOGE("mem");
+            return -1;
+        }
+        return evtimer_add(pclient->timeout_ev, timeout);
+    } else {
+        // already allocated, replace existing timeout
+        evtimer_del(pclient->timeout_ev);
+        ret = evtimer_assign(pclient->timeout_ev, pclient->global_env->eventBaseLoop, ev_fn, arg);
+        if (ret != 0) return ret;
+        ret = evtimer_add(pclient->timeout_ev, timeout);
+        return ret;
+    }
 }
 
 void transocks_drop_all_clients(transocks_global_env *env) {
