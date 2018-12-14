@@ -66,26 +66,37 @@ void transocks_global_env_free(transocks_global_env *pEnv) {
 }
 
 transocks_client *transocks_client_new(transocks_global_env *env) {
-    transocks_client *client = calloc(1, sizeof(transocks_client));
+    transocks_client *client = malloc(sizeof(transocks_client));
     if (client == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
     }
+    INIT_LIST_HEAD(&(client->dlinklistentry));
+    client->global_env = NULL;
+    client->clientaddr = NULL;
+    client->destaddr = NULL;
+    client->clientFd = -1;
+    client->relayFd = -1;
+    client->client_bev = NULL;
+    client->relay_bev = NULL;
+    client->timeout_ev = NULL;
+    client->user_arg = NULL;
+    client->client_shutdown_read = false;
+    client->client_shutdown_write = false;
+    client->relay_shutdown_read = false;
+    client->relay_shutdown_write = false;
     client->client_state = client_new;
-    client->clientaddr = calloc(1, sizeof(struct sockaddr_storage));
-    client->destaddr = calloc(1, sizeof(struct sockaddr_storage));
+
+    client->clientaddr = malloc(sizeof(struct sockaddr_storage));
+    client->destaddr = malloc(sizeof(struct sockaddr_storage));
     if (client->clientaddr == NULL
         || client->destaddr == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
     }
-    client->clientFd = -1;
-    client->relayFd = -1;
+
     client->global_env = env;
-    client->client_shutdown_read = false;
-    client->client_shutdown_write = false;
-    client->relay_shutdown_read = false;
-    client->relay_shutdown_write = false;
+
     return client;
 
     fail:

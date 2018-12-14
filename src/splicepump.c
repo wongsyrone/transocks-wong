@@ -225,27 +225,36 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
 }
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient) {
-    transocks_splicepump *pump = calloc(1, sizeof(transocks_splicepump));
+    transocks_splicepump *pump = malloc(sizeof(transocks_splicepump));
     if (pump == NULL) {
         LOGE("mem");
         return NULL;
     }
-    pump->inbound_pipe = calloc(1, sizeof(transocks_splicepipe));
+    pump->client_read_ev = NULL;
+    pump->client_write_ev = NULL;
+    pump->relay_read_ev = NULL;
+    pump->relay_write_ev = NULL;
+    pump->inbound_pipe = NULL;
+    pump->outbound_pipe = NULL;
+
+    pump->inbound_pipe = malloc(sizeof(transocks_splicepipe));
     if (pump->inbound_pipe == NULL) {
-        LOGE("mem");
-        return NULL;
-    }
-    pump->outbound_pipe = calloc(1, sizeof(transocks_splicepipe));
-    if (pump->outbound_pipe == NULL) {
         LOGE("mem");
         return NULL;
     }
     pump->inbound_pipe->pipe_writefd = -1;
     pump->inbound_pipe->pipe_readfd = -1;
     pump->inbound_pipe->data_in_pipe = 0;
+
+    pump->outbound_pipe = malloc(sizeof(transocks_splicepipe));
+    if (pump->outbound_pipe == NULL) {
+        LOGE("mem");
+        return NULL;
+    }
     pump->outbound_pipe->pipe_writefd = -1;
     pump->outbound_pipe->pipe_readfd = -1;
     pump->outbound_pipe->data_in_pipe = 0;
+
     // attach pump to client context
     pclient->user_arg = pump;
 

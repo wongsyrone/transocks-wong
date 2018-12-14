@@ -98,7 +98,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
     struct sockaddr_in *sa_ip4 = NULL;
     struct sockaddr_in6 *sa_ip6 = NULL;
     if (pclient->destaddr->ss_family == AF_INET) {
-        req_ip4 = calloc(1, sizeof(struct socks_request_ipv4));
+        req_ip4 = malloc(sizeof(struct socks_request_ipv4));
         if (req_ip4 == NULL) goto freeClient;
         sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
         req_ip4->ver = SOCKS5_VERSION;
@@ -112,7 +112,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(free, req_ip4);
     } else if (pclient->destaddr->ss_family == AF_INET6) {
-        req_ip6 = calloc(1, sizeof(struct socks_request_ipv6));
+        req_ip6 = malloc(sizeof(struct socks_request_ipv6));
         if (req_ip6 == NULL) goto freeClient;
         sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
         req_ip6->ver = SOCKS5_VERSION;
