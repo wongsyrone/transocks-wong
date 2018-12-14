@@ -23,17 +23,31 @@ int transocks_pump_init(transocks_global_env *env) {
     TRANSOCKS_FOREACH(ppump, transocks_pumps) {
         if (!strcmp(env->pumpMethodName, (*ppump)->name)) {
             pumpMethodImpl = *ppump;
-            return 0;
+            break;
         }
     }
-    LOGE("cannot find pump impl %s", env->pumpMethodName);
-    return -1;
+    // sanity checks
+    if (pumpMethodImpl == NULL) {
+        LOGE("cannot find pump impl %s", env->pumpMethodName);
+        return -1;
+    }
+    if (pumpMethodImpl->start_pump_fn == NULL) {
+        LOGE("unregistered start_pump_fn handler");
+        return -1;
+    }
+    if (pumpMethodImpl->free_pump_fn == NULL) {
+        LOGE("unregistered free_pump_fn handler");
+        return -1;
+    }
+    if (pumpMethodImpl->dump_info_fn == NULL) {
+        LOGE("unregistered dump_info_fn handler");
+        return -1;
+    }
+
+    return 0;
 }
 
 int transocks_start_pump(transocks_client *pclient) {
-    if (pumpMethodImpl == NULL || pumpMethodImpl->start_pump_fn == NULL)
-        return -1;
-
     if (pumpMethodImpl->start_pump_fn(pclient) != 0) {
         LOGE("fail to start pump %s", pumpMethodImpl->name);
         return -1;
