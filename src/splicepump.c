@@ -268,10 +268,18 @@ static void transocks_splicepump_free(transocks_client *pclient) {
     if (ppump == NULL)
         return;
     LOGD("enter");
-    event_del(ppump->client_read_ev);
-    event_del(ppump->client_write_ev);
-    event_del(ppump->relay_read_ev);
-    event_del(ppump->relay_write_ev);
+    if (ppump->client_read_ev != NULL) {
+        event_del(ppump->client_read_ev);
+    }
+    if (ppump->client_write_ev != NULL) {
+        event_del(ppump->client_write_ev);
+    }
+    if (ppump->relay_read_ev != NULL) {
+        event_del(ppump->relay_read_ev);
+    }
+    if (ppump->relay_write_ev != NULL) {
+        event_del(ppump->relay_write_ev);
+    }
     TRANSOCKS_FREE(event_free, ppump->client_read_ev);
     TRANSOCKS_FREE(event_free, ppump->client_write_ev);
     TRANSOCKS_FREE(event_free, ppump->relay_read_ev);
