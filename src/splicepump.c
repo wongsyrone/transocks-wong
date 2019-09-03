@@ -225,7 +225,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
 }
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient) {
-    transocks_splicepump *pump = malloc(sizeof(transocks_splicepump));
+    transocks_splicepump *pump = tr_malloc(sizeof(transocks_splicepump));
     if (pump == NULL) {
         LOGE("mem");
         return NULL;
@@ -237,7 +237,7 @@ static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient)
     pump->inbound_pipe = NULL;
     pump->outbound_pipe = NULL;
 
-    pump->inbound_pipe = malloc(sizeof(transocks_splicepipe));
+    pump->inbound_pipe = tr_malloc(sizeof(transocks_splicepipe));
     if (pump->inbound_pipe == NULL) {
         LOGE("mem");
         return NULL;
@@ -246,7 +246,7 @@ static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient)
     pump->inbound_pipe->pipe_readfd = -1;
     pump->inbound_pipe->data_in_pipe = 0;
 
-    pump->outbound_pipe = malloc(sizeof(transocks_splicepipe));
+    pump->outbound_pipe = tr_malloc(sizeof(transocks_splicepipe));
     if (pump->outbound_pipe == NULL) {
         LOGE("mem");
         return NULL;
@@ -287,13 +287,13 @@ static void transocks_splicepump_free(transocks_client *pclient) {
 
     TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
     TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
-    TRANSOCKS_FREE(free, ppump->inbound_pipe);
+    TRANSOCKS_FREE(tr_free, ppump->inbound_pipe);
 
     TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
     TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
-    TRANSOCKS_FREE(free, ppump->outbound_pipe);
+    TRANSOCKS_FREE(tr_free, ppump->outbound_pipe);
 
-    TRANSOCKS_FREE(free, ppump);
+    TRANSOCKS_FREE(tr_free, ppump);
     // call outer free func
     TRANSOCKS_FREE(transocks_client_free, pclient);
 }

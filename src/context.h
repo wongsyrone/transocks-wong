@@ -5,6 +5,8 @@
 #ifndef TRANSOCKS_WONG_CONTEXT_H
 #define TRANSOCKS_WONG_CONTEXT_H
 
+#include "mem-allocator.h"
+
 #include <string.h>
 #include <stdlib.h>
 

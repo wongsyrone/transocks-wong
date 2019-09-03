@@ -152,7 +152,7 @@ int listener_init(transocks_global_env *env) {
         goto closeFd;
     }
 
-    env->listener = malloc(sizeof(struct transocks_listener_t));
+    env->listener = tr_malloc(sizeof(struct transocks_listener_t));
     if (env->listener == NULL) {
         LOGE("fail to allocate memory");
         goto freeListener;
@@ -188,6 +188,6 @@ void listener_deinit(transocks_global_env *env) {
             TRANSOCKS_FREE(event_free, env->listener->listener_ev);
         }
         TRANSOCKS_CLOSE(env->listener->listenerFd);
-        TRANSOCKS_FREE(free, env->listener);
+        TRANSOCKS_FREE(tr_free, env->listener);
     }
 }

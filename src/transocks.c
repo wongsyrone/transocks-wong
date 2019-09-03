@@ -111,6 +111,7 @@ int main(int argc, char **argv) {
     }
 
     LOGI("transocks-wong started");
+    LOGI("using memory allocator: " TR_USED_MEM_ALLOCATOR);
     LOGI("using pumpmethod: %s", globalEnv->pumpMethodName);
 
     // start event loop

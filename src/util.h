@@ -5,6 +5,8 @@
 #ifndef TRANSOCKS_WONG_UTIL_H
 #define TRANSOCKS_WONG_UTIL_H
 
+#include "mem-allocator.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>

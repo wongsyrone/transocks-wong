@@ -5,6 +5,8 @@
 #ifndef TRANSOCKS_WONG_LISTENER_H
 #define TRANSOCKS_WONG_LISTENER_H
 
+#include "mem-allocator.h"
+
 #include <unistd.h>
 
 #include "context.h"

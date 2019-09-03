@@ -98,7 +98,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
     struct sockaddr_in *sa_ip4 = NULL;
     struct sockaddr_in6 *sa_ip6 = NULL;
     if (pclient->destaddr->ss_family == AF_INET) {
-        req_ip4 = malloc(sizeof(struct socks_request_ipv4));
+        req_ip4 = tr_malloc(sizeof(struct socks_request_ipv4));
         if (req_ip4 == NULL) goto freeClient;
         sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
         req_ip4->ver = SOCKS5_VERSION;
@@ -110,9 +110,9 @@ static void socks_send_connect_request(transocks_client *pclient) {
         memcpy(&(req_ip4->addr), &(sa_ip4->sin_addr), sizeof(struct in_addr));
         dump_data("socks_send_connect_request_v4", (char *) req_ip4, sizeof(struct socks_request_ipv4));
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
-        TRANSOCKS_FREE(free, req_ip4);
+        TRANSOCKS_FREE(tr_free, req_ip4);
     } else if (pclient->destaddr->ss_family == AF_INET6) {
-        req_ip6 = malloc(sizeof(struct socks_request_ipv6));
+        req_ip6 = tr_malloc(sizeof(struct socks_request_ipv6));
         if (req_ip6 == NULL) goto freeClient;
         sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
         req_ip6->ver = SOCKS5_VERSION;
@@ -124,7 +124,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
         memcpy(&(req_ip6->addr), &(sa_ip6->sin6_addr), sizeof(struct in6_addr));
         dump_data("socks_send_connect_request_v6", (char *) req_ip6, sizeof(struct socks_request_ipv6));
         bufferevent_write(relay_bev, (const void *) req_ip6, sizeof(struct socks_request_ipv6));
-        TRANSOCKS_FREE(free, req_ip6);
+        TRANSOCKS_FREE(tr_free, req_ip6);
     } else {
         LOGE("unknown ss_family");
         goto freeClient;

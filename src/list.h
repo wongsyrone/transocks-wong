@@ -8,6 +8,8 @@
 
 /* SPDX-License-Identifier: GPL-2.0 */
 
+#include "mem-allocator.h"
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>

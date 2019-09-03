@@ -5,6 +5,7 @@
 #ifndef TRANSOCKS_WONG_PUMP_H
 #define TRANSOCKS_WONG_PUMP_H
 
+#include "mem-allocator.h"
 #include "context.h"
 #include "util.h"
 #include "log.h"

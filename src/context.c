@@ -23,13 +23,13 @@ static char *transocks_client_state_str[] = {
 
 transocks_global_env *transocks_global_env_new(void) {
     struct transocks_global_env_t *env =
-            calloc(1, sizeof(struct transocks_global_env_t));
+            tr_calloc(1, sizeof(struct transocks_global_env_t));
     if (env == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
     }
-    env->bindAddr = calloc(1, sizeof(struct sockaddr_storage));
-    env->relayAddr = calloc(1, sizeof(struct sockaddr_storage));
+    env->bindAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
+    env->relayAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
     if (env->bindAddr == NULL || env->relayAddr == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
@@ -45,28 +45,28 @@ transocks_global_env *transocks_global_env_new(void) {
     return env;
 
     fail:
-    TRANSOCKS_FREE(free, env->bindAddr);
-    TRANSOCKS_FREE(free, env->relayAddr);
+    TRANSOCKS_FREE(tr_free, env->bindAddr);
+    TRANSOCKS_FREE(tr_free, env->relayAddr);
     TRANSOCKS_FREE(event_base_free, env->eventBaseLoop);
-    TRANSOCKS_FREE(free, env);
+    TRANSOCKS_FREE(tr_free, env);
     return NULL;
 }
 
 void transocks_global_env_free(transocks_global_env *pEnv) {
     if (pEnv == NULL) return;
 
-    TRANSOCKS_FREE(free, pEnv->pumpMethodName);
-    TRANSOCKS_FREE(free, pEnv->relayAddr);
-    TRANSOCKS_FREE(free, pEnv->bindAddr);
+    TRANSOCKS_FREE(tr_free, pEnv->pumpMethodName);
+    TRANSOCKS_FREE(tr_free, pEnv->relayAddr);
+    TRANSOCKS_FREE(tr_free, pEnv->bindAddr);
     listener_deinit(pEnv);
     signal_deinit(pEnv);
 
     TRANSOCKS_FREE(event_base_free, pEnv->eventBaseLoop);
-    TRANSOCKS_FREE(free, pEnv);
+    TRANSOCKS_FREE(tr_free, pEnv);
 }
 
 transocks_client *transocks_client_new(transocks_global_env *env) {
-    transocks_client *client = malloc(sizeof(transocks_client));
+    transocks_client *client = tr_malloc(sizeof(transocks_client));
     if (client == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
@@ -87,8 +87,8 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->relay_shutdown_write = false;
     client->client_state = client_new;
 
-    client->clientaddr = malloc(sizeof(struct sockaddr_storage));
-    client->destaddr = malloc(sizeof(struct sockaddr_storage));
+    client->clientaddr = tr_malloc(sizeof(struct sockaddr_storage));
+    client->destaddr = tr_malloc(sizeof(struct sockaddr_storage));
     if (client->clientaddr == NULL
         || client->destaddr == NULL) {
         LOGE("fail to allocate memory");
@@ -100,9 +100,9 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     return client;
 
     fail:
-    TRANSOCKS_FREE(free, client->clientaddr);
-    TRANSOCKS_FREE(free, client->destaddr);
-    TRANSOCKS_FREE(free, client);
+    TRANSOCKS_FREE(tr_free, client->clientaddr);
+    TRANSOCKS_FREE(tr_free, client->destaddr);
+    TRANSOCKS_FREE(tr_free, client);
     return NULL;
 }
 
@@ -135,8 +135,8 @@ void transocks_client_free(transocks_client *pClient) {
         }
     }
 
-    TRANSOCKS_FREE(free, pClient->clientaddr);
-    TRANSOCKS_FREE(free, pClient->destaddr);
+    TRANSOCKS_FREE(tr_free, pClient->clientaddr);
+    TRANSOCKS_FREE(tr_free, pClient->destaddr);
 
     pClient->client_state = client_INVALID;
 
@@ -147,7 +147,7 @@ void transocks_client_free(transocks_client *pClient) {
         list_del(&(pClient->dlinklistentry));
     }
 
-    TRANSOCKS_FREE(free, pClient);
+    TRANSOCKS_FREE(tr_free, pClient);
 }
 
 int transocks_client_set_timeout(transocks_client *pclient, const struct timeval *timeout,

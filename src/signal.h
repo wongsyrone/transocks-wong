@@ -5,6 +5,8 @@
 #ifndef TRANSOCKS_WONG_SIGNAL_H
 #define TRANSOCKS_WONG_SIGNAL_H
 
+#include "mem-allocator.h"
+
 #include <signal.h>
 
 #include "context.h"
