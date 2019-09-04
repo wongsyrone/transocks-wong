@@ -13,7 +13,7 @@ env:
     - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=ON"
     - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=OFF"
 before_install:
-  - LIBEVENT_VER=2.1.8-stable
+  - LIBEVENT_VER=2.1.11-stable
   - SRCDIR=$PWD
   - echo $SRCDIR
   - curl -O -L https://github.com/libevent/libevent/releases/download/release-${LIBEVENT_VER}/libevent-${LIBEVENT_VER}.tar.gz
