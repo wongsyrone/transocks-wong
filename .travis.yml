@@ -12,7 +12,10 @@ env:
     - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=ON -DLibevent2_USE_STATIC_LIB=OFF"
     - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=ON"
     - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=OFF"
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=ON -DWITH_MEM_ALLOCATOR=mimalloc"
+    - TRANSOCKS_OPTIONS="-DENABLE_DEBUG=OFF -DLibevent2_USE_STATIC_LIB=OFF -DWITH_MEM_ALLOCATOR=mimalloc"
 before_install:
+  - echo "build libevent2"
   - LIBEVENT_VER=2.1.11-stable
   - SRCDIR=$PWD
   - echo $SRCDIR
@@ -22,12 +25,25 @@ before_install:
   - ./configure --prefix=$SRCDIR/libevent-install && make && make install
   - tree $SRCDIR/libevent-install
   - popd
+  - echo "build mimalloc"
+  - MIMALLOC_VER=1.0.8
+  - SRCDIR=$PWD
+  - echo $SRCDIR
+  - curl -O -L https://github.com/microsoft/mimalloc/archive/v${MIMALLOC_VER}.tar.gz
+  - tar xf v${MIMALLOC_VER}.tar.gz
+  - pushd mimalloc-${MIMALLOC_VER}
+  - mkdir mimalloc-install
+  - pushd mimalloc-install
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$SRCDIR/mimalloc-${MIMALLOC_VER}/mimalloc-install" .. && make install
+  - tree $SRCDIR/mimalloc-${MIMALLOC_VER}/mimalloc-install
+  - popd
+  - popd
 script:
   - SRCDIR=$PWD
   - echo $SRCDIR
   - mkdir build
   - pushd build
-  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$SRCDIR/transocks-wong-bin" -DCMAKE_FIND_ROOT_PATH:PATH=$SRCDIR/libevent-install\;/usr $TRANSOCKS_OPTIONS ..
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$SRCDIR/transocks-wong-bin" -DCMAKE_FIND_ROOT_PATH:PATH=$SRCDIR/libevent-install\;$SRCDIR/mimalloc-${MIMALLOC_VER}/mimalloc-install\;/usr $TRANSOCKS_OPTIONS ..
   - make install
   - tree $SRCDIR/transocks-wong-bin
   - ldd $SRCDIR/transocks-wong-bin/bin/transocks-wong
