@@ -28,7 +28,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     if (acceptedSrcSockLen == 0) {
         goto freeFd;
     }
-    if (setnonblocking(clientFd, true) != 0) {
+    if (apply_non_blocking(clientFd, true) != 0) {
         LOGE("fail to set nonblocking");
         goto freeFd;
     }
@@ -129,7 +129,7 @@ int listener_init(transocks_global_env *env) {
         LOGE_ERRNO("fail to set SO_REUSEPORT");
         goto closeFd;
     }
-    if (setnonblocking(fd, true) != 0) {
+    if (apply_non_blocking(fd, true) != 0) {
         LOGE("fail to set non-blocking");
         goto closeFd;
     }

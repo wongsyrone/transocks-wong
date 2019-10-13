@@ -120,10 +120,10 @@ int main(int argc, char **argv) {
     }
 
     // check if port exists
-    if (!validateAddrPort(&listener_ss)) {
+    if (!validate_addr_port(&listener_ss)) {
         FATAL_WITH_HELPMSG("fail to parse listener address port: %s", listenerAddrPort);
     }
-    if (!validateAddrPort(&socks5_ss)) {
+    if (!validate_addr_port(&socks5_ss)) {
         FATAL_WITH_HELPMSG("fail to parse socks5 address port: %s", socks5AddrPort);
     }
 

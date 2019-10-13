@@ -160,23 +160,26 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_FREE(tr_free, pClient);
 }
 
-int transocks_client_set_timeout(transocks_client *pclient, const struct timeval *timeout,
-                                 event_callback_fn ev_fn, void *arg) {
+int transocks_client_set_timeout(struct event_base *eventBase,
+                                 struct event *event,
+                                 const struct timeval *timeout,
+                                 event_callback_fn ev_fn,
+                                 void *arg) {
     int ret;
-    if (pclient->handshakeTimeoutEvent == NULL) {
+    if (event == NULL) {
         // first time
-        pclient->handshakeTimeoutEvent = evtimer_new(pclient->globalEnv->eventBaseLoop, ev_fn, arg);
-        if (pclient->handshakeTimeoutEvent == NULL) {
+        event = evtimer_new(eventBase, ev_fn, arg);
+        if (event == NULL) {
             LOGE("mem");
             return -1;
         }
-        return evtimer_add(pclient->handshakeTimeoutEvent, timeout);
+        return evtimer_add(event, timeout);
     } else {
         // already allocated, replace existing timeout
-        evtimer_del(pclient->handshakeTimeoutEvent);
-        ret = evtimer_assign(pclient->handshakeTimeoutEvent, pclient->globalEnv->eventBaseLoop, ev_fn, arg);
+        evtimer_del(event);
+        ret = evtimer_assign(event, eventBase, ev_fn, arg);
         if (ret != 0) return ret;
-        ret = evtimer_add(pclient->handshakeTimeoutEvent, timeout);
+        ret = evtimer_add(event, timeout);
         return ret;
     }
 }

@@ -16,10 +16,10 @@ int create_pipe(int *readEndFd, int *writeEndFd) {
         LOGE_ERRNO("pipe");
         return -1;
     }
-    if (setnonblocking(pipefds[0], true) != 0) {
+    if (apply_non_blocking(pipefds[0], true) != 0) {
         return -1;
     }
-    if (setnonblocking(pipefds[1], true) != 0) {
+    if (apply_non_blocking(pipefds[1], true) != 0) {
         return -1;
     }
     *readEndFd = pipefds[0];

@@ -21,9 +21,12 @@ typedef struct transocks_transparent_method_t transocks_transparent_method;
  * init listener
  */
 /* functions */
-typedef int (*transocks_transparent_method_fn1_t)(transocks_client *);
 
-typedef void (*transocks_transparent_method_fn2_t)(transocks_client *);
+/* socket(domain, type, protocol) */
+typedef int (*transocks_transparent_method_listener_sock_setup_fn_t)(transocks_client *, int , int , int , void *);
+typedef int (*transocks_transparent_method_client_sock_setup_fn_t)(transocks_client *, int , int , int , void *);
+typedef int (*transocks_transparent_method_get_orig_dest_addr_fn_t)(transocks_client *, struct sockaddr_storage *, socklen_t *, void *);
+typedef int (*transocks_transparent_method_timeout_fn_t)(transocks_client *, void *);
 
 typedef void (*transocks_transparent_method_fn3_t)(transocks_client *);
 
@@ -31,9 +34,12 @@ typedef void (*transocks_transparent_method_fn3_t)(transocks_client *);
 typedef struct transocks_transparent_method_t {
     char *name;
     void *user_arg;
-    transocks_transparent_method_fn1_t transparent_method_fn1;
-    transocks_transparent_method_fn2_t transparent_method_fn2;
-    transocks_transparent_method_fn3_t transparent_method_fn3;
+    transocks_transparent_method_listener_sock_setup_fn_t tcp_listener_sock_setup_fn;
+    transocks_transparent_method_listener_sock_setup_fn_t udp_listener_sock_setup_fn;
+    transocks_transparent_method_client_sock_setup_fn_t client_sock_setup;
+    transocks_transparent_method_get_orig_dest_addr_fn_t get_orig_dest_addr;
+    transocks_transparent_method_timeout_fn_t tcp_timeout_fn;
+    transocks_transparent_method_timeout_fn_t udp_timeout_fn;
 } transocks_transparent_method;
 
 

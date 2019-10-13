@@ -155,7 +155,8 @@ static void socks_send_connect_request(transocks_client *pclient) {
     bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
 
-    transocks_client_set_timeout(pclient, &socks5_timeout_tv, socks5_timeout_cb, pclient);
+    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->handshakeTimeoutEvent,
+            &socks5_timeout_tv, socks5_timeout_cb, pclient);
 
     return;
 
@@ -211,7 +212,8 @@ static void socks_send_method_selection(transocks_client *pclient) {
     bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
 
-    transocks_client_set_timeout(pclient, &socks5_timeout_tv, socks5_timeout_cb, pclient);
+    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->handshakeTimeoutEvent,
+                                 &socks5_timeout_tv, socks5_timeout_cb, pclient);
 }
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
@@ -249,7 +251,7 @@ void transocks_start_connect_relay(transocks_client *pClient) {
         LOGE_ERRNO("fail to create socket");
         goto freeClient;
     }
-    if (setnonblocking(relay_fd, true) != 0) {
+    if (apply_non_blocking(relay_fd, true) != 0) {
         LOGE("fail to set non-blocking");
         goto closeFd;
     }
@@ -277,7 +279,8 @@ void transocks_start_connect_relay(transocks_client *pClient) {
     bufferevent_setcb(pClient->relayBufferEvent, NULL, NULL, relay_onconnect_eventcb, pClient);
     bufferevent_enable(pClient->relayBufferEvent, EV_WRITE);
 
-    transocks_client_set_timeout(pClient, &socks5_timeout_tv, socks5_timeout_cb, pClient);
+    transocks_client_set_timeout(pClient->globalEnv->eventBaseLoop, pClient->handshakeTimeoutEvent,
+                                 &socks5_timeout_tv, socks5_timeout_cb, pClient);
     if (bufferevent_socket_connect(pClient->relayBufferEvent,
                                    (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");

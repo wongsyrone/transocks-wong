@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <netdb.h>
-#include <netinet/in.h>
+#include <netinet/in.h> /* IP_RECVORIGDSTADDR */
 #include <netinet/tcp.h>
 #include <arpa/inet.h> /* inet_pton, inet_ntop */
 #include <sys/types.h>
@@ -36,6 +36,26 @@
 #define IP6T_SO_ORIGINAL_DST  80
 #endif
 
+#ifndef IP_RECVORIGDSTADDR
+#warning using custom IP_RECVORIGDSTADDR
+#define IP_RECVORIGDSTADDR 20
+#endif
+
+#ifndef IPV6_RECVORIGDSTADDR
+#warning using custom IPV6_RECVORIGDSTADDR
+#define IPV6_RECVORIGDSTADDR 74
+#endif
+
+#ifndef IP_TRANSPARENT
+#warning using custom IP_TRANSPARENT
+#define IP_TRANSPARENT 19
+#endif
+
+#ifndef IPV6_TRANSPARENT
+#warning using custom IPV6_TRANSPARENT
+#define IPV6_TRANSPARENT 75
+#endif
+
 #define TRANSOCKS_INET_PORTSTRLEN               (5 + 1)
 /* '[' + INET6_ADDRSTRLEN + ']' + ':' + "65535" + NUL */
 #define TRANSOCKS_INET_ADDRPORTSTRLEN           (1 + INET6_ADDRSTRLEN + 1 + 1 + TRANSOCKS_INET_PORTSTRLEN + 1)
@@ -53,12 +73,36 @@ int apply_ipv6only(int, int);
 
 int apply_tcp_nodelay(int);
 
-int setnonblocking(int, bool);
+int apply_non_blocking(int, bool);
 
-int get_orig_dst_tcp_redirect(int fd, struct sockaddr_storage *destaddr, socklen_t *addrlen);
+int get_orig_dst_tcp_redirect(int fd, struct sockaddr_storage *destAddr, socklen_t *addrLen);
 
-bool validateAddrPort(struct sockaddr_storage *);
+bool validate_addr_port(struct sockaddr_storage *ss);
 
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
+
+int new_tcp4_socket(void);
+
+int new_tcp6_socket(void);
+
+int new_udp4_socket(void);
+
+int new_udp6_socket(void);
+
+int new_tcp4_listenersock(void);
+
+int new_tcp6_listenersock(void);
+
+int new_tcp4_listenersock_tproxy(void);
+
+int new_tcp6_listenersock_tproxy(void);
+
+int new_udp4_respsock_tproxy(void);
+
+int new_udp6_respsock_tproxy(void);
+
+int new_udp4_listenersock_tproxy(void);
+
+int new_udp6_listenersock_tproxy(void);
 
 #endif //TRANSOCKS_WONG_NETUTILS_H

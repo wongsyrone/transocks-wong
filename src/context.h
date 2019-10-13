@@ -19,6 +19,7 @@
 #include "log.h"
 #include "list.h"
 
+// TODO: redesign states
 enum transocks_client_state {
     client_new,
     client_relay_connected,
@@ -57,7 +58,7 @@ typedef struct transocks_global_env_t {
     struct list_head clientDlinkList;   // double link list of client
 } transocks_global_env;
 
-
+// TODO: distinguish between TCP/UDP client?
 typedef struct transocks_client_t {
     struct list_head dLinkListEntry;
     struct transocks_global_env_t *globalEnv;
@@ -94,7 +95,11 @@ transocks_client *transocks_client_new(transocks_global_env *);
 
 void transocks_client_free(transocks_client *);
 
-int transocks_client_set_timeout(transocks_client *, const struct timeval *, event_callback_fn, void *);
+int transocks_client_set_timeout(struct event_base *,
+                                 struct event *,
+                                 const struct timeval *,
+                                 event_callback_fn,
+                                 void *);
 
 void transocks_drop_all_clients(transocks_global_env *);
 
