@@ -4,6 +4,7 @@
 
 #include "socks5.h"
 #include "pump.h"
+#include "netutils.h"
 
 static void socks5_timeout_cb(evutil_socket_t, short, void *);
 
@@ -25,6 +26,24 @@ static struct timeval socks5_timeout_tv = {
         .tv_usec = 0
 };
 
+static struct timeval udp_timeout_tv = {
+        .tv_sec = 300,
+        .tv_usec = 0
+};
+
+static char *socks5_error_str[] = {
+        [SOCKS5_REP_SUCCEEDED] = "succeeded",
+        [SOCKS5_REP_GENERAL] = "general SOCKS server failure",
+        [SOCKS5_REP_CONN_DISALLOWED] = "connection not allowed by ruleset",
+        [SOCKS5_REP_NETWORK_UNREACHABLE] = "Network unreachable",
+        [SOCKS5_REP_HOST_UNREACHABLE] = "Host unreachable",
+        [SOCKS5_REP_CONN_REFUSED] = "Connection refused",
+        [SOCKS5_REP_TTL_EXPIRED] = "TTL expired",
+        [SOCKS5_REP_CMD_NOT_SUPPORTED] = "Command not supported",
+        [SOCKS5_REP_ADDRTYPE_NOT_SUPPORTED] = "Address type not supported",
+        [SOCKS5_REP_UNASSIGNED] = "unassigned",
+};
+
 /*
  * We assume socks5 server are listening on the loopback interface
  * thus treats any EOF as error
@@ -32,7 +51,7 @@ static struct timeval socks5_timeout_tv = {
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->timeout_ev);
+    evtimer_del(pclient->handshakeTimeoutEvent);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)
         || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
@@ -45,8 +64,8 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
     TRANSOCKS_UNUSED(bev);
     LOGD("enter");
     transocks_client *pClient = (transocks_client *) userArg;
-    evtimer_del(pClient->timeout_ev);
-    struct bufferevent *relay_bev = pClient->relay_bev;
+    evtimer_del(pClient->handshakeTimeoutEvent);
+    struct bufferevent *relay_bev = pClient->relayBufferEvent;
     struct evbuffer *input = bufferevent_get_input(relay_bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 10) {
@@ -54,17 +73,17 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
         goto freeClient;
     }
     unsigned char *mem = evbuffer_pullup(input, input_read_size);
-    struct socks_response_header *preshead = (struct socks_response_header *) mem;
-    if (preshead->ver != SOCKS5_VERSION) {
+    struct socks_response_header *pSocksResponseHeader = (struct socks_response_header *) mem;
+    if (pSocksResponseHeader->ver != SOCKS5_VERSION) {
         LOGE("not a socks5 server");
         goto freeClient;
     }
-    if (preshead->rep != SOCKS5_REP_SUCCEEDED) {
-        LOGE("socks connect rep %x", preshead->rep);
+    if (pSocksResponseHeader->rep != SOCKS5_REP_SUCCEEDED) {
+        LOGE("socks connect rep (%x): %s", pSocksResponseHeader->rep, socks5_error_str[pSocksResponseHeader->rep]);
         goto freeClient;
     }
 
-    switch (preshead->atyp) {
+    switch (pSocksResponseHeader->atyp) {
         case SOCKS5_ATYP_IPV4:
             evbuffer_drain(input, 10);
             break;
@@ -75,7 +94,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
             LOGE("atyp domain should not happen");
             goto freeClient;
     }
-    pClient->client_state = client_socks5_finish_handshake;
+    pClient->clientState = client_socks5_finish_handshake;
     LOGD("before pump, %d", (int) evbuffer_get_length(input));
     // disable bufferevent until pump enable it again
     bufferevent_disable(relay_bev, EV_READ | EV_WRITE);
@@ -92,15 +111,15 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
 
 static void socks_send_connect_request(transocks_client *pclient) {
     LOGD("enter");
-    struct bufferevent *relay_bev = pclient->relay_bev;
+    struct bufferevent *relay_bev = pclient->relayBufferEvent;
     struct socks_request_ipv4 *req_ip4 = NULL;
     struct socks_request_ipv6 *req_ip6 = NULL;
     struct sockaddr_in *sa_ip4 = NULL;
     struct sockaddr_in6 *sa_ip6 = NULL;
-    if (pclient->destaddr->ss_family == AF_INET) {
+    if (pclient->destAddr->ss_family == AF_INET) {
         req_ip4 = tr_malloc(sizeof(struct socks_request_ipv4));
         if (req_ip4 == NULL) goto freeClient;
-        sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
+        sa_ip4 = (struct sockaddr_in *) (pclient->destAddr);
         req_ip4->ver = SOCKS5_VERSION;
         req_ip4->cmd = SOCKS5_CMD_CONNECT;
         req_ip4->rsv = 0x00;
@@ -111,10 +130,10 @@ static void socks_send_connect_request(transocks_client *pclient) {
         dump_data("socks_send_connect_request_v4", (char *) req_ip4, sizeof(struct socks_request_ipv4));
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(tr_free, req_ip4);
-    } else if (pclient->destaddr->ss_family == AF_INET6) {
+    } else if (pclient->destAddr->ss_family == AF_INET6) {
         req_ip6 = tr_malloc(sizeof(struct socks_request_ipv6));
         if (req_ip6 == NULL) goto freeClient;
-        sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
+        sa_ip6 = (struct sockaddr_in6 *) (pclient->destAddr);
         req_ip6->ver = SOCKS5_VERSION;
         req_ip6->cmd = SOCKS5_CMD_CONNECT;
         req_ip6->rsv = 0x00;
@@ -147,7 +166,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
     LOGD("enter");
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->timeout_ev);
+    evtimer_del(pclient->handshakeTimeoutEvent);
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 2) {
@@ -182,7 +201,7 @@ static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void
 static void socks_send_method_selection(transocks_client *pclient) {
     LOGD("enter");
     //wait for 2 bytes socks server selected method
-    struct bufferevent *relay_bev = pclient->relay_bev;
+    struct bufferevent *relay_bev = pclient->relayBufferEvent;
     struct socks_method_select_request req;
     req.ver = SOCKS5_VERSION;
     req.nmethods = 0x01;
@@ -198,10 +217,10 @@ static void socks_send_method_selection(transocks_client *pclient) {
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->timeout_ev);
+    evtimer_del(pclient->handshakeTimeoutEvent);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_CONNECTED)) {
         /* We're connected */
-        pclient->client_state = client_relay_connected;
+        pclient->clientState = client_relay_connected;
         socks_send_method_selection(pclient);
         return;
     }
@@ -224,7 +243,7 @@ static void socks5_timeout_cb(evutil_socket_t fd, short events, void *userArg) {
 
 void transocks_start_connect_relay(transocks_client *pClient) {
     LOGD("enter");
-    transocks_global_env *env = pClient->global_env;
+    transocks_global_env *env = pClient->globalEnv;
     int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
     if (relay_fd < 0) {
         LOGE_ERRNO("fail to create socket");
@@ -253,13 +272,13 @@ void transocks_start_connect_relay(transocks_client *pClient) {
         LOGE("bufferevent_socket_new");
         goto closeFd;
     }
-    pClient->relay_bev = relay_bev;
+    pClient->relayBufferEvent = relay_bev;
 
-    bufferevent_setcb(pClient->relay_bev, NULL, NULL, relay_onconnect_eventcb, pClient);
-    bufferevent_enable(pClient->relay_bev, EV_WRITE);
+    bufferevent_setcb(pClient->relayBufferEvent, NULL, NULL, relay_onconnect_eventcb, pClient);
+    bufferevent_enable(pClient->relayBufferEvent, EV_WRITE);
 
     transocks_client_set_timeout(pClient, &socks5_timeout_tv, socks5_timeout_cb, pClient);
-    if (bufferevent_socket_connect(pClient->relay_bev,
+    if (bufferevent_socket_connect(pClient->relayBufferEvent,
                                    (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
         LOGE("fail to connect to relay");
         goto freeBev;

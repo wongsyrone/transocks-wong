@@ -2,12 +2,13 @@
 // Created by wong on 10/30/18.
 //
 
-#ifndef TRANSOCKS_WONG_SPLICEPUMP_H
-#define TRANSOCKS_WONG_SPLICEPUMP_H
+#ifndef TRANSOCKS_WONG_PUMP_SPLICEPUMP_H
+#define TRANSOCKS_WONG_PUMP_SPLICEPUMP_H
 
 #include "mem-allocator.h"
 
 #include "util.h"
+#include "netutils.h"
 #include "context.h"
 #include "log.h"
 #include "pump.h"
@@ -34,4 +35,4 @@ typedef struct transocks_splicepump_t {
 } transocks_splicepump;
 
 
-#endif //TRANSOCKS_WONG_SPLICEPUMP_H
+#endif //TRANSOCKS_WONG_PUMP_SPLICEPUMP_H

@@ -12,8 +12,10 @@
 #include "log.h"
 #include "context.h"
 #include "signal.h"
-#include "listener.h"
+#include "tcp-listener.h"
 #include "pump.h"
+#include "transparent-method.h"
+#include "netutils.h"
 
 
 static transocks_global_env *globalEnv = NULL;
@@ -24,6 +26,7 @@ int main(int argc, char **argv) {
     char *listenerAddrPort = NULL;
     char *socks5AddrPort = NULL;
     char *pumpMethod = NULL;
+    char *transparentMethod = NULL;
 
     struct sockaddr_storage listener_ss;
     socklen_t listener_ss_size;
@@ -31,11 +34,12 @@ int main(int argc, char **argv) {
     socklen_t socks5_ss_size;
 
     static struct option long_options[] = {
-            {"listener-addr-port", required_argument, NULL, GETOPT_VAL_LISTENERADDRPORT},
-            {"socks5-addr-port",   required_argument, NULL, GETOPT_VAL_SOCKS5ADDRPORT},
-            {"pump-method",        optional_argument, NULL, GETOPT_VAL_PUMPMETHOD},
-            {"help",               no_argument,       NULL, GETOPT_VAL_HELP},
-            {NULL, 0,                                 NULL, 0}
+            {.name = "listener-addr-port", .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_LISTENERADDRPORT},
+            {.name = "socks5-addr-port",   .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_SOCKS5ADDRPORT},
+            {.name = "pump-method",        .has_arg = optional_argument, .flag = NULL, .val = GETOPT_VAL_PUMPMETHOD},
+            {.name = "transparent-method", .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_TRANSPARENTMETHOD},
+            {.name = "help",               .has_arg = no_argument,       .flag = NULL, .val = GETOPT_VAL_HELP},
+            {.name = NULL, .has_arg = 0,                                 .flag = NULL, .val = 0}
     };
 
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
@@ -48,6 +52,9 @@ int main(int argc, char **argv) {
                 break;
             case GETOPT_VAL_PUMPMETHOD:
                 pumpMethod = optarg;
+                break;
+            case GETOPT_VAL_TRANSPARENTMETHOD:
+                transparentMethod = optarg;
                 break;
             case '?':
             case 'h':
@@ -65,6 +72,10 @@ int main(int argc, char **argv) {
 
     if (pumpMethod == NULL) {
         pumpMethod = PUMPMETHOD_BUFFER;
+    }
+
+    if (transparentMethod == NULL) {
+        transparentMethod = TRANSPARENTMETHOD_REDIRECT;
     }
 
     // ignore SIGPIPE
@@ -98,9 +109,6 @@ int main(int argc, char **argv) {
     memcpy(globalEnv->relayAddr, &socks5_ss, sizeof(struct sockaddr_storage));
     globalEnv->relayAddrLen = socks5_ss_size;
 
-    if (listener_init(globalEnv) != 0) {
-        goto shutdown;
-    }
     globalEnv->pumpMethodName = strdup(pumpMethod);
     if (globalEnv->pumpMethodName == NULL) {
         goto shutdown;
@@ -110,9 +118,23 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
 
+    globalEnv->transparentMethodName = strdup(transparentMethod);
+    if (globalEnv->transparentMethodName == NULL) {
+        goto shutdown;
+    }
+
+    if (transocks_transparent_method_init(globalEnv) != 0) {
+        goto shutdown;
+    }
+    // TODO: a generic listener for both TCP and UDP
+    if (listener_init(globalEnv) != 0) {
+        goto shutdown;
+    }
+
     LOGI("transocks-wong started");
     LOGI("using memory allocator: " TR_USED_MEM_ALLOCATOR);
-    LOGI("using pumpmethod: %s", globalEnv->pumpMethodName);
+    LOGI("using pump method: %s", globalEnv->pumpMethodName);
+    LOGI("using transparent method: %s", globalEnv->transparentMethodName);
 
     // start event loop
     event_base_dispatch(globalEnv->eventBaseLoop);
@@ -130,6 +152,7 @@ int main(int argc, char **argv) {
     }
     // we are done, bye
     TRANSOCKS_FREE(transocks_global_env_free, globalEnv);
+
     bareExit:
     return 0;
 }

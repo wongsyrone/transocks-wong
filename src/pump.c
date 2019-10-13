@@ -5,15 +5,15 @@
 #include "util.h"
 #include "pump.h"
 
-#include "bufferpump.h"
-#include "splicepump.h"
+#include "pump-bufferpump.h"
+#include "pump-splicepump.h"
 
-extern transocks_pump transocks_bufferpump_ops;
-extern transocks_pump transocks_splicepump_ops;
+extern transocks_pump transocks_pump_bufferpump_ops;
+extern transocks_pump transocks_pump_splicepump_ops;
 
 static transocks_pump *transocks_pumps[] = {
-        &transocks_splicepump_ops,
-        &transocks_bufferpump_ops,
+        &transocks_pump_splicepump_ops,
+        &transocks_pump_bufferpump_ops,
 };
 
 static transocks_pump *pumpMethodImpl = NULL;
@@ -52,7 +52,7 @@ int transocks_start_pump(transocks_client *pclient) {
         LOGE("fail to start pump %s", pumpMethodImpl->name);
         return -1;
     }
-    pclient->client_state = client_pumping_data;
+    pclient->clientState = client_pumping_data;
     return 0;
 }
 

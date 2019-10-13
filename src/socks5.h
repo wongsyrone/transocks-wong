@@ -38,7 +38,7 @@
 #define SOCKS5_REP_TTL_EXPIRED 0x06
 #define SOCKS5_REP_CMD_NOT_SUPPORTED 0x07
 #define SOCKS5_REP_ADDRTYPE_NOT_SUPPORTED 0x08
-#define SOCKS5_REP_FF_UNASSIGNED 0x09
+#define SOCKS5_REP_UNASSIGNED 0x09
 
 struct socks_method_select_request {
     unsigned char ver;

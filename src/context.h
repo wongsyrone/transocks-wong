@@ -43,43 +43,45 @@ typedef struct transocks_listener_t transocks_listener;
 
 typedef struct transocks_global_env_t {
     char *pumpMethodName;               // pump method name
+    char *transparentMethodName;        // transparent method name
     struct sockaddr_storage *bindAddr;  // listener addr
     struct sockaddr_storage *relayAddr; // SOCKS5 server addr
     socklen_t bindAddrLen;              // listener addr socklen
     socklen_t relayAddrLen;             // SOCKS5 server addr socklen
     struct event_base *eventBaseLoop;
-    transocks_listener *listener;
-    struct event *sigterm_ev;
-    struct event *sigint_ev;
-    struct event *sighup_ev;
-    struct event *sigusr1_ev;
+    transocks_listener *tcpListener;
+    struct event *sigtermEvent;
+    struct event *sigintEvent;
+    struct event *sighupEvent;
+    struct event *sigusr1Event;
     struct list_head clientDlinkList;   // double link list of client
 } transocks_global_env;
 
 
 typedef struct transocks_client_t {
-    struct list_head dlinklistentry;
-    struct transocks_global_env_t *global_env;
-    struct sockaddr_storage *clientaddr;   // accepted client addr
-    struct sockaddr_storage *destaddr;     // accepted client destination addr (from iptables)
+    struct list_head dLinkListEntry;
+    struct transocks_global_env_t *globalEnv;
+    struct sockaddr_storage *clientAddr;   // accepted client addr
+    struct sockaddr_storage *destAddr;     // accepted client destination addr
     int clientFd;                          // accepted client fd
     int relayFd;
-    socklen_t clientaddrlen;               // accepted client addr socklen
-    socklen_t destaddrlen;                 // accepted client destination addr socklen
-    struct bufferevent *client_bev; // client output -> relay input
-    struct bufferevent *relay_bev;  // relay output -> client input
-    struct event *timeout_ev;
-    void *user_arg;
-    enum transocks_client_state client_state;
-    bool client_shutdown_read;
-    bool client_shutdown_write;
-    bool relay_shutdown_read;
-    bool relay_shutdown_write;
+    socklen_t clientAddrLen;               // accepted client addr socklen
+    socklen_t destAddrLen;                 // accepted client destination addr socklen
+    struct bufferevent *clientBufferEvent; // client output -> relay input
+    struct bufferevent *relayBufferEvent;  // relay output -> client input
+    struct event *handshakeTimeoutEvent;
+    struct event *udpTimeoutEvent;
+    void *userArg;
+    enum transocks_client_state clientState;
+    bool isClientShutdownRead;
+    bool isClientShutdownWrite;
+    bool isRelayShutdownRead;
+    bool isRelayShutdownWrite;
 } transocks_client;
 
 typedef struct transocks_listener_t {
-    int listenerFd;            // listener socket fd
-    struct event *listener_ev; // listener EV_READ
+    int listenerFd;              // listener socket fd
+    struct event *listenerEvent; // listener EV_READ
 } transocks_listener;
 
 /* context structures util functions */

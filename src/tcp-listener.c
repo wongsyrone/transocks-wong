@@ -2,7 +2,8 @@
 // Created by wong on 10/27/18.
 //
 
-#include "listener.h"
+#include "tcp-listener.h"
+#include "netutils.h"
 
 static void listener_cb(evutil_socket_t, short, void *);
 
@@ -13,7 +14,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     int clientFd;
     struct sockaddr_storage acceptedSrcSockAddr;
     socklen_t acceptedSrcSockLen = sizeof(struct sockaddr_storage);
-    clientFd = accept(env->listener->listenerFd,
+    clientFd = accept(env->tcpListener->listenerFd,
                       (struct sockaddr *) (&acceptedSrcSockAddr), &acceptedSrcSockLen);
     if (clientFd < 0) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -54,24 +55,24 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) env->bindAddr, env->bindAddrLen);
 
-    pclient->clientaddrlen = acceptedSrcSockLen;
-    memcpy((void *) (pclient->clientaddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
+    pclient->clientAddrLen = acceptedSrcSockLen;
+    memcpy((void *) (pclient->clientAddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
 
 
-    if (getorigdst(clientFd, pclient->destaddr, &pclient->destaddrlen) != 0) {
+    if (get_orig_dst_tcp_redirect(clientFd, pclient->destAddr, &pclient->destAddrLen) != 0) {
         LOGE("fail to get origdestaddr, close fd");
         goto freeClient;
     }
 
     generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->destaddr), pclient->destaddrlen);
+                               (const struct sockaddr *) (pclient->destAddr), pclient->destAddrLen);
 
 
     LOGI("%s accept a conn %s -> %s", bindaddrstr, srcaddrstr, destaddrstr);
     pclient->clientFd = clientFd;
-    pclient->global_env = env;
+    pclient->globalEnv = env;
 
     struct bufferevent *client_bev = bufferevent_socket_new(env->eventBaseLoop,
                                                             -1, BEV_OPT_CLOSE_ON_FREE);
@@ -91,9 +92,9 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
         goto freeBev;
     }
 
-    pclient->client_bev = client_bev;
+    pclient->clientBufferEvent = client_bev;
 
-    list_add(&(pclient->dlinklistentry), &(env->clientDlinkList));
+    list_add(&(pclient->dLinkListEntry), &(env->clientDlinkList));
 
     // start connecting SOCKS5 relay
     transocks_start_connect_relay(pclient);
@@ -152,19 +153,19 @@ int listener_init(transocks_global_env *env) {
         goto closeFd;
     }
 
-    env->listener = tr_malloc(sizeof(struct transocks_listener_t));
-    if (env->listener == NULL) {
+    env->tcpListener = tr_malloc(sizeof(struct transocks_listener_t));
+    if (env->tcpListener == NULL) {
         LOGE("fail to allocate memory");
         goto freeListener;
     }
-    env->listener->listenerFd = fd;
-    env->listener->listener_ev = event_new(env->eventBaseLoop, fd,
+    env->tcpListener->listenerFd = fd;
+    env->tcpListener->listenerEvent = event_new(env->eventBaseLoop, fd,
                                            EV_READ | EV_PERSIST, listener_cb, env);
-    if (env->listener->listener_ev == NULL) {
+    if (env->tcpListener->listenerEvent == NULL) {
         LOGE("fail to allocate memory");
         goto freeListener;
     }
-    if (event_add(env->listener->listener_ev, NULL) != 0) {
+    if (event_add(env->tcpListener->listenerEvent, NULL) != 0) {
         LOGE("fail to add listener_ev");
         goto freeListener;
     }
@@ -182,12 +183,12 @@ int listener_init(transocks_global_env *env) {
 
 void listener_deinit(transocks_global_env *env) {
     if (env == NULL) return;
-    if (env->listener != NULL) {
-        if (env->listener->listener_ev != NULL) {
-            event_del(env->listener->listener_ev);
-            TRANSOCKS_FREE(event_free, env->listener->listener_ev);
+    if (env->tcpListener != NULL) {
+        if (env->tcpListener->listenerEvent != NULL) {
+            event_del(env->tcpListener->listenerEvent);
+            TRANSOCKS_FREE(event_free, env->tcpListener->listenerEvent);
         }
-        TRANSOCKS_CLOSE(env->listener->listenerFd);
-        TRANSOCKS_FREE(tr_free, env->listener);
+        TRANSOCKS_CLOSE(env->tcpListener->listenerFd);
+        TRANSOCKS_FREE(tr_free, env->tcpListener);
     }
 }
