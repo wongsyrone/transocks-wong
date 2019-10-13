@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
     memcpy(globalEnv->relayAddr, &socks5_ss, sizeof(struct sockaddr_storage));
     globalEnv->relayAddrLen = socks5_ss_size;
 
-    globalEnv->pumpMethodName = strdup(pumpMethod);
+    globalEnv->pumpMethodName = tr_strdup(pumpMethod);
     if (globalEnv->pumpMethodName == NULL) {
         goto shutdown;
     }
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
 
-    globalEnv->transparentMethodName = strdup(transparentMethod);
+    globalEnv->transparentMethodName = tr_strdup(transparentMethod);
     if (globalEnv->transparentMethodName == NULL) {
         goto shutdown;
     }
