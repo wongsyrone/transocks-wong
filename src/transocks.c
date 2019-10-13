@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "mem-allocator.h"
 #include "util.h"
 #include "log.h"
 #include "context.h"
@@ -34,12 +35,42 @@ int main(int argc, char **argv) {
     socklen_t socks5_ss_size;
 
     static struct option long_options[] = {
-            {.name = "listener-addr-port", .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_LISTENERADDRPORT},
-            {.name = "socks5-addr-port",   .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_SOCKS5ADDRPORT},
-            {.name = "pump-method",        .has_arg = optional_argument, .flag = NULL, .val = GETOPT_VAL_PUMPMETHOD},
-            {.name = "transparent-method", .has_arg = required_argument, .flag = NULL, .val = GETOPT_VAL_TRANSPARENTMETHOD},
-            {.name = "help",               .has_arg = no_argument,       .flag = NULL, .val = GETOPT_VAL_HELP},
-            {.name = NULL, .has_arg = 0,                                 .flag = NULL, .val = 0}
+            {
+                    .name = "listener-addr-port",
+                    .has_arg = required_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_LISTENERADDRPORT
+            },
+            {
+                    .name = "socks5-addr-port",
+                    .has_arg = required_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_SOCKS5ADDRPORT
+            },
+            {
+                    .name = "pump-method",
+                    .has_arg = optional_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_PUMPMETHOD
+            },
+            {
+                    .name = "transparent-method",
+                    .has_arg = required_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_TRANSPARENTMETHOD
+            },
+            {
+                    .name = "help",
+                    .has_arg = no_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_HELP
+            },
+            {
+                    .name = NULL,
+                    .has_arg = 0,
+                    .flag = NULL,
+                    .val = 0
+            }
     };
 
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
@@ -132,7 +163,8 @@ int main(int argc, char **argv) {
     }
 
     LOGI("transocks-wong started");
-    LOGI("using memory allocator: " TR_USED_MEM_ALLOCATOR);
+    LOGI("using memory allocator: "
+                 TR_USED_MEM_ALLOCATOR);
     LOGI("using pump method: %s", globalEnv->pumpMethodName);
     LOGI("using transparent method: %s", globalEnv->transparentMethodName);
 
