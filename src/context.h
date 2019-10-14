@@ -28,6 +28,18 @@ enum transocks_client_state {
     client_INVALID
 };
 
+enum transocks_listener_type {
+    listener_tcp,
+    listener_udp,
+    listener_UNKNOWN
+};
+
+enum transocks_client_type {
+    client_tcp,
+    client_udp,
+    client_UNKNOWN
+};
+
 /* forward declaration */
 
 // global configuration and global environment
@@ -45,12 +57,15 @@ typedef struct transocks_listener_t transocks_listener;
 typedef struct transocks_global_env_t {
     char *pumpMethodName;               // pump method name
     char *transparentMethodName;        // transparent method name
-    struct sockaddr_storage *bindAddr;  // listener addr
+    struct sockaddr_storage *tcpBindAddr;  // listener addr
+    struct sockaddr_storage *udpBindAddr; // udp listener addr
     struct sockaddr_storage *relayAddr; // SOCKS5 server addr
-    socklen_t bindAddrLen;              // listener addr socklen
+    socklen_t tcpBindAddrLen;              // tcp listener addr socklen
+    socklen_t udpBindAddrLen;          // udp listener addr socklen
     socklen_t relayAddrLen;             // SOCKS5 server addr socklen
     struct event_base *eventBaseLoop;
     transocks_listener *tcpListener;
+    transocks_listener *udpListener;
     struct event *sigtermEvent;
     struct event *sigintEvent;
     struct event *sighupEvent;
@@ -58,7 +73,6 @@ typedef struct transocks_global_env_t {
     struct list_head clientDlinkList;   // double link list of client
 } transocks_global_env;
 
-// TODO: distinguish between TCP/UDP client?
 typedef struct transocks_client_t {
     struct list_head dLinkListEntry;
     struct transocks_global_env_t *globalEnv;
@@ -70,10 +84,10 @@ typedef struct transocks_client_t {
     socklen_t destAddrLen;                 // accepted client destination addr socklen
     struct bufferevent *clientBufferEvent; // client output -> relay input
     struct bufferevent *relayBufferEvent;  // relay output -> client input
-    struct event *handshakeTimeoutEvent;
-    struct event *udpTimeoutEvent;
+    struct event *timeoutEvent;
     void *userArg;
     enum transocks_client_state clientState;
+    enum transocks_client_type clientType;
     bool isClientShutdownRead;
     bool isClientShutdownWrite;
     bool isRelayShutdownRead;
@@ -81,6 +95,7 @@ typedef struct transocks_client_t {
 } transocks_client;
 
 typedef struct transocks_listener_t {
+    enum transocks_listener_type listenerType;
     int listenerFd;              // listener socket fd
     struct event *listenerEvent; // listener EV_READ
 } transocks_listener;
@@ -100,7 +115,8 @@ int transocks_client_set_timeout(struct event_base *,
                                  const struct timeval *,
                                  event_callback_fn,
                                  void *);
-
+int transocks_client_remove_timeout(struct event *,
+                                    void *);
 void transocks_drop_all_clients(transocks_global_env *);
 
 void transocks_dump_all_client_info(transocks_global_env *);

@@ -51,7 +51,7 @@ static char *socks5_error_str[] = {
 static void socks_handshake_stage_errcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->handshakeTimeoutEvent);
+    transocks_client_remove_timeout(pclient->timeoutEvent, pclient);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_EOF)
         || TRANSOCKS_CHKBIT(bevs, BEV_EVENT_ERROR)) {
         int err = EVUTIL_SOCKET_ERROR();
@@ -64,7 +64,7 @@ static void socks_on_server_connect_reply_readcb(struct bufferevent *bev, void *
     TRANSOCKS_UNUSED(bev);
     LOGD("enter");
     transocks_client *pClient = (transocks_client *) userArg;
-    evtimer_del(pClient->handshakeTimeoutEvent);
+    transocks_client_remove_timeout(pClient->timeoutEvent, pClient);
     struct bufferevent *relay_bev = pClient->relayBufferEvent;
     struct evbuffer *input = bufferevent_get_input(relay_bev);
     size_t input_read_size = evbuffer_get_length(input);
@@ -155,7 +155,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
     bufferevent_setcb(relay_bev, socks_on_server_connect_reply_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
 
-    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->handshakeTimeoutEvent,
+    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->timeoutEvent,
             &socks5_timeout_tv, socks5_timeout_cb, pclient);
 
     return;
@@ -167,7 +167,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
 static void socks_on_server_selected_method_readcb(struct bufferevent *bev, void *userArg) {
     LOGD("enter");
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->handshakeTimeoutEvent);
+    transocks_client_remove_timeout(pclient->timeoutEvent, pclient);
     struct evbuffer *input = bufferevent_get_input(bev);
     size_t input_read_size = evbuffer_get_length(input);
     if (input_read_size < 2) {
@@ -212,14 +212,14 @@ static void socks_send_method_selection(transocks_client *pclient) {
     bufferevent_setcb(relay_bev, socks_on_server_selected_method_readcb, NULL, socks_handshake_stage_errcb, pclient);
     bufferevent_enable(relay_bev, EV_READ);
 
-    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->handshakeTimeoutEvent,
+    transocks_client_set_timeout(pclient->globalEnv->eventBaseLoop, pclient->timeoutEvent,
                                  &socks5_timeout_tv, socks5_timeout_cb, pclient);
 }
 
 static void relay_onconnect_eventcb(struct bufferevent *bev, short bevs, void *userArg) {
     TRANSOCKS_UNUSED(bev);
     transocks_client *pclient = (transocks_client *) userArg;
-    evtimer_del(pclient->handshakeTimeoutEvent);
+    transocks_client_remove_timeout(pclient->timeoutEvent, pclient);
     if (TRANSOCKS_CHKBIT(bevs, BEV_EVENT_CONNECTED)) {
         /* We're connected */
         pclient->clientState = client_relay_connected;
@@ -243,7 +243,7 @@ static void socks5_timeout_cb(evutil_socket_t fd, short events, void *userArg) {
     TRANSOCKS_FREE(transocks_client_free, pclient);
 }
 
-void transocks_start_connect_relay(transocks_client *pClient) {
+void transocks_on_client_received(transocks_client *pClient) {
     LOGD("enter");
     transocks_global_env *env = pClient->globalEnv;
     int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
@@ -279,7 +279,7 @@ void transocks_start_connect_relay(transocks_client *pClient) {
     bufferevent_setcb(pClient->relayBufferEvent, NULL, NULL, relay_onconnect_eventcb, pClient);
     bufferevent_enable(pClient->relayBufferEvent, EV_WRITE);
 
-    transocks_client_set_timeout(pClient->globalEnv->eventBaseLoop, pClient->handshakeTimeoutEvent,
+    transocks_client_set_timeout(pClient->globalEnv->eventBaseLoop, pClient->timeoutEvent,
                                  &socks5_timeout_tv, socks5_timeout_cb, pClient);
     if (bufferevent_socket_connect(pClient->relayBufferEvent,
                                    (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {

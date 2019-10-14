@@ -9,6 +9,7 @@
 #include "netutils.h"
 
 
+
 int create_pipe(int *readEndFd, int *writeEndFd) {
     int pipefds[2];
     int ret = pipe(pipefds);
@@ -29,7 +30,8 @@ int create_pipe(int *readEndFd, int *writeEndFd) {
 
 void print_help() {
     fprintf(stdout, "transocks-wong help:\n");
-    fprintf(stdout, "\t --listener-addr-port   what address and port we are listening\n");
+    fprintf(stdout, "\t --tcp-listener-addr-port   what address and port we are listening for TCP\n");
+    fprintf(stdout, "\t --udp-listener-addr-port   what address and port we are listening for UDP\n");
     fprintf(stdout, "\t --socks5-addr-port     the SOCKS5 server address and port\n");
     fprintf(stdout, "\t --pump-method          " PUMPMETHOD_BUFFER "/" PUMPMETHOD_SPLICE "\n");
     fprintf(stdout, "\t --transparent-method   " TRANSPARENTMETHOD_REDIRECT "/" TRANSPARENTMETHOD_TPROXY "\n");

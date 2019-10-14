@@ -3,7 +3,7 @@
 //
 
 #include "context.h"
-#include "tcp-listener.h"
+#include "listener-tcp.h"
 #include "signal.h"
 #include "pump.h"
 #include "netutils.h"
@@ -31,9 +31,9 @@ transocks_global_env *transocks_global_env_new(void) {
     }
     env->pumpMethodName = NULL;
     env->transparentMethodName = NULL;
-    env->bindAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
+    env->tcpBindAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
     env->relayAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
-    if (env->bindAddr == NULL || env->relayAddr == NULL) {
+    if (env->tcpBindAddr == NULL || env->relayAddr == NULL) {
         LOGE("fail to allocate memory");
         goto fail;
     }
@@ -48,7 +48,7 @@ transocks_global_env *transocks_global_env_new(void) {
     return env;
 
     fail:
-    TRANSOCKS_FREE(tr_free, env->bindAddr);
+    TRANSOCKS_FREE(tr_free, env->tcpBindAddr);
     TRANSOCKS_FREE(tr_free, env->relayAddr);
     TRANSOCKS_FREE(event_base_free, env->eventBaseLoop);
     TRANSOCKS_FREE(tr_free, env);
@@ -61,8 +61,8 @@ void transocks_global_env_free(transocks_global_env *pEnv) {
     TRANSOCKS_FREE(tr_free, pEnv->pumpMethodName);
     TRANSOCKS_FREE(tr_free, pEnv->transparentMethodName);
     TRANSOCKS_FREE(tr_free, pEnv->relayAddr);
-    TRANSOCKS_FREE(tr_free, pEnv->bindAddr);
-    listener_deinit(pEnv);
+    TRANSOCKS_FREE(tr_free, pEnv->tcpBindAddr);
+    tcp_listener_destory(pEnv);
     signal_deinit(pEnv);
 
     TRANSOCKS_FREE(event_base_free, pEnv->eventBaseLoop);
@@ -83,8 +83,7 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->relayFd = -1;
     client->clientBufferEvent = NULL;
     client->relayBufferEvent = NULL;
-    client->handshakeTimeoutEvent = NULL;
-    client->udpTimeoutEvent = NULL;
+    client->timeoutEvent = NULL;
     client->userArg = NULL;
     client->isClientShutdownRead = false;
     client->isClientShutdownWrite = false;
@@ -116,15 +115,10 @@ void transocks_client_free(transocks_client *pClient) {
 
     transocks_pump_dump_info_debug(pClient, "free a conn");
 
-    if (pClient->handshakeTimeoutEvent != NULL) {
-        evtimer_del(pClient->handshakeTimeoutEvent);
+    if (pClient->timeoutEvent != NULL) {
+        evtimer_del(pClient->timeoutEvent);
     }
-    TRANSOCKS_FREE(event_free, pClient->handshakeTimeoutEvent);
-
-    if (pClient->udpTimeoutEvent != NULL) {
-        evtimer_del(pClient->udpTimeoutEvent);
-    }
-    TRANSOCKS_FREE(event_free, pClient->udpTimeoutEvent);
+    TRANSOCKS_FREE(event_free, pClient->timeoutEvent);
 
     if (pClient->relayBufferEvent != NULL) {
         bufferevent_disable(pClient->relayBufferEvent, EV_READ | EV_WRITE);
@@ -181,6 +175,19 @@ int transocks_client_set_timeout(struct event_base *eventBase,
         if (ret != 0) return ret;
         ret = evtimer_add(event, timeout);
         return ret;
+    }
+}
+
+int transocks_client_remove_timeout(struct event *event,
+                                 void *arg) {
+    int ret;
+    if (event == NULL) {
+        // not allocated, no need to remove timeout
+        return 1;
+    } else {
+        // already allocated, replace existing timeout
+        evtimer_del(event);
+        return 0;
     }
 }
 

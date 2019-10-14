@@ -81,13 +81,9 @@ bool validate_addr_port(struct sockaddr_storage *ss);
 
 int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_t *actualSockAddrLen);
 
-int new_tcp4_socket(void);
+int new_stream_socket(sa_family_t family) ;
 
-int new_tcp6_socket(void);
-
-int new_udp4_socket(void);
-
-int new_udp6_socket(void);
+int new_dgram_socket(sa_family_t family) ;
 
 int new_tcp4_listenersock(void);
 

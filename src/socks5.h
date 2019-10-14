@@ -99,6 +99,6 @@ struct socks_response_header {
 #pragma pack(pop) //Restore original alignment from stack.
 
 
-void transocks_start_connect_relay(transocks_client *);
+void transocks_on_client_received(transocks_client *);
 
 #endif //TRANSOCKS_WONG_SOCKS5_H

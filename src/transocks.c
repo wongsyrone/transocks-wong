@@ -13,7 +13,8 @@
 #include "log.h"
 #include "context.h"
 #include "signal.h"
-#include "tcp-listener.h"
+#include "listener-tcp.h"
+#include "listener-udp.h"
 #include "pump.h"
 #include "transparent-method.h"
 #include "netutils.h"
@@ -24,22 +25,31 @@ static transocks_global_env *globalEnv = NULL;
 int main(int argc, char **argv) {
     int opt;
 
-    char *listenerAddrPort = NULL;
+    char *tcpListenerAddrPort = NULL;
+    char *udpListenerAddrPort = NULL;
     char *socks5AddrPort = NULL;
     char *pumpMethod = NULL;
     char *transparentMethod = NULL;
 
-    struct sockaddr_storage listener_ss;
-    socklen_t listener_ss_size;
+    struct sockaddr_storage tcp_listener_ss;
+    socklen_t tcp_listener_ss_size;
+    struct sockaddr_storage udp_listener_ss;
+    socklen_t udp_listener_ss_size;
     struct sockaddr_storage socks5_ss;
     socklen_t socks5_ss_size;
 
     static struct option long_options[] = {
             {
-                    .name = "listener-addr-port",
+                    .name = "tcp-listener-addr-port",
                     .has_arg = required_argument,
                     .flag = NULL,
-                    .val = GETOPT_VAL_LISTENERADDRPORT
+                    .val = GETOPT_VAL_TCPLISTENERADDRPORT
+            },
+            {
+                    .name = "udp-listener-addr-port",
+                    .has_arg = required_argument,
+                    .flag = NULL,
+                    .val = GETOPT_VAL_UDPLISTENERADDRPORT
             },
             {
                     .name = "socks5-addr-port",
@@ -75,8 +85,11 @@ int main(int argc, char **argv) {
 
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
         switch (opt) {
-            case GETOPT_VAL_LISTENERADDRPORT:
-                listenerAddrPort = optarg;
+            case GETOPT_VAL_TCPLISTENERADDRPORT:
+                tcpListenerAddrPort = optarg;
+                break;
+            case GETOPT_VAL_UDPLISTENERADDRPORT:
+                udpListenerAddrPort = optarg;
                 break;
             case GETOPT_VAL_SOCKS5ADDRPORT:
                 socks5AddrPort = optarg;
@@ -96,7 +109,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (listenerAddrPort == NULL
+    if (tcpListenerAddrPort == NULL
+    || udpListenerAddrPort == NULL
         || socks5AddrPort == NULL) {
         PRINTHELP_EXIT();
     }
@@ -112,16 +126,22 @@ int main(int argc, char **argv) {
     // ignore SIGPIPE
     signal(SIGPIPE, SIG_IGN);
 
-    if (transocks_parse_sockaddr_port(listenerAddrPort, (struct sockaddr *) &listener_ss, &listener_ss_size) != 0) {
-        FATAL_WITH_HELPMSG("invalid listener address and port: %s", listenerAddrPort);
+    if (transocks_parse_sockaddr_port(tcpListenerAddrPort, (struct sockaddr *) &tcp_listener_ss, &tcp_listener_ss_size) != 0) {
+        FATAL_WITH_HELPMSG("invalid tcp listener address and port: %s", tcpListenerAddrPort);
+    }
+    if (transocks_parse_sockaddr_port(udpListenerAddrPort, (struct sockaddr *) &udp_listener_ss, &udp_listener_ss_size) != 0) {
+        FATAL_WITH_HELPMSG("invalid udp listener address and port: %s", udpListenerAddrPort);
     }
     if (transocks_parse_sockaddr_port(socks5AddrPort, (struct sockaddr *) &socks5_ss, &socks5_ss_size) != 0) {
         FATAL_WITH_HELPMSG("invalid socks5 address and port: %s", socks5AddrPort);
     }
 
     // check if port exists
-    if (!validate_addr_port(&listener_ss)) {
-        FATAL_WITH_HELPMSG("fail to parse listener address port: %s", listenerAddrPort);
+    if (!validate_addr_port(&tcp_listener_ss)) {
+        FATAL_WITH_HELPMSG("fail to parse tcp listener address port: %s", tcpListenerAddrPort);
+    }
+    if (!validate_addr_port(&udp_listener_ss)) {
+        FATAL_WITH_HELPMSG("fail to parse udp listener address port: %s", udpListenerAddrPort);
     }
     if (!validate_addr_port(&socks5_ss)) {
         FATAL_WITH_HELPMSG("fail to parse socks5 address port: %s", socks5AddrPort);
@@ -135,8 +155,10 @@ int main(int argc, char **argv) {
     if (signal_init(globalEnv) != 0) {
         goto shutdown;
     }
-    memcpy(globalEnv->bindAddr, &listener_ss, sizeof(struct sockaddr_storage));
-    globalEnv->bindAddrLen = listener_ss_size;
+    memcpy(globalEnv->tcpBindAddr, &tcp_listener_ss, sizeof(struct sockaddr_storage));
+    globalEnv->tcpBindAddrLen = tcp_listener_ss_size;
+    memcpy(globalEnv->udpBindAddr, &udp_listener_ss, sizeof(struct sockaddr_storage));
+    globalEnv->udpBindAddrLen = udp_listener_ss_size;
     memcpy(globalEnv->relayAddr, &socks5_ss, sizeof(struct sockaddr_storage));
     globalEnv->relayAddrLen = socks5_ss_size;
 
@@ -158,7 +180,10 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
     // TODO: a generic listener for both TCP and UDP
-    if (listener_init(globalEnv) != 0) {
+    if (tcp_listener_init(globalEnv) != 0) {
+        goto shutdown;
+    }
+    if (udp_listener_init(globalEnv) != 0) {
         goto shutdown;
     }
 

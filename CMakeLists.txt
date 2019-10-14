@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 add_definitions(-std=c11 -Wno-unused-parameter -D_GNU_SOURCE)
 add_executable(transocks-wong
-        src/transocks.c src/util.c src/util.h src/socks5.h src/log.c src/log.h src/context.c src/context.h src/tcp-listener.c src/tcp-listener.h src/signal.c src/signal.h src/socks5.c src/pump.c src/pump.h src/pump-bufferpump.c src/pump-bufferpump.h src/pump-splicepump.c src/pump-splicepump.h src/list.h src/mem-allocator.h src/transparent-method.c src/transparent-method.h src/netutils.c src/netutils.h src/transparent-method-redirect.c src/transparent-method-redirect.h src/transparent-method-tproxy.c src/transparent-method-tproxy.h)
+        src/transocks.c src/util.c src/util.h src/socks5.h src/log.c src/log.h src/context.c src/context.h src/listener-tcp.c src/listener-tcp.h src/signal.c src/signal.h src/socks5.c src/pump.c src/pump.h src/pump-bufferpump.c src/pump-bufferpump.h src/pump-splicepump.c src/pump-splicepump.h src/list.h src/mem-allocator.h src/transparent-method.c src/transparent-method.h src/netutils.c src/netutils.h src/transparent-method-redirect.c src/transparent-method-redirect.h src/transparent-method-tproxy.c src/transparent-method-tproxy.h src/listener-udp.c src/listener-udp.h)
 find_package(Libevent2 REQUIRED)
 include_directories(${LIBEVENT2_INCLUDE_DIR})
 target_link_libraries(transocks-wong ${LIBEVENT2_LIBRARIES})

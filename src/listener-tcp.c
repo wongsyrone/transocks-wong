@@ -2,12 +2,12 @@
 // Created by wong on 10/27/18.
 //
 
-#include "tcp-listener.h"
+#include "listener-tcp.h"
 #include "netutils.h"
 
-static void listener_cb(evutil_socket_t, short, void *);
+static void tcp_listener_cb(evutil_socket_t, short, void *);
 
-static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
+static void tcp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
     TRANSOCKS_UNUSED(fd);
     TRANSOCKS_UNUSED(events);
     transocks_global_env *env = (transocks_global_env *) userArg;
@@ -53,7 +53,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) env->bindAddr, env->bindAddrLen);
+                               (const struct sockaddr *) env->tcpBindAddr, env->tcpBindAddrLen);
 
     pclient->clientAddrLen = acceptedSrcSockLen;
     memcpy((void *) (pclient->clientAddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
@@ -97,7 +97,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     list_add(&(pclient->dLinkListEntry), &(env->clientDlinkList));
 
     // start connecting SOCKS5 relay
-    transocks_start_connect_relay(pclient);
+    transocks_on_client_received(pclient);
     return;
 
     freeBev:
@@ -110,38 +110,14 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     TRANSOCKS_CLOSE(clientFd);
 }
 
-int listener_init(transocks_global_env *env) {
+int tcp_listener_init(transocks_global_env *env) {
     int on = 1;
     int err;
-    int fd = socket(env->bindAddr->ss_family, SOCK_STREAM, 0);
-    if (fd < 0) {
-        LOGE_ERRNO("fail to create socket");
-        return -1;
-    }
-    err = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    int fd;
 
-    if (err != 0) {
-        LOGE_ERRNO("fail to set SO_REUSEADDR");
-        goto closeFd;
-    }
-    err = setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
-    if (err != 0) {
-        LOGE_ERRNO("fail to set SO_REUSEPORT");
-        goto closeFd;
-    }
-    if (apply_non_blocking(fd, true) != 0) {
-        LOGE("fail to set non-blocking");
-        goto closeFd;
-    }
-    // ensure we accept both ipv4 and ipv6
-    if (env->bindAddr->ss_family == AF_INET6) {
-        if (apply_ipv6only(fd, 0) != 0) {
-            LOGE("fail to disable IPV6_V6ONLY");
-            goto closeFd;
-        }
-    }
+    // TODO
 
-    err = bind(fd, (struct sockaddr *) (env->bindAddr), env->bindAddrLen);
+    err = bind(fd, (struct sockaddr *) (env->tcpBindAddr), env->tcpBindAddrLen);
     if (err != 0) {
         LOGE_ERRNO("fail to bind");
         goto closeFd;
@@ -160,7 +136,7 @@ int listener_init(transocks_global_env *env) {
     }
     env->tcpListener->listenerFd = fd;
     env->tcpListener->listenerEvent = event_new(env->eventBaseLoop, fd,
-                                           EV_READ | EV_PERSIST, listener_cb, env);
+                                                EV_READ | EV_PERSIST, tcp_listener_cb, env);
     if (env->tcpListener->listenerEvent == NULL) {
         LOGE("fail to allocate memory");
         goto freeListener;
@@ -173,7 +149,7 @@ int listener_init(transocks_global_env *env) {
     return 0;
 
     freeListener:
-    listener_deinit(env);
+    tcp_listener_destory(env);
 
     closeFd:
     TRANSOCKS_CLOSE(fd);
@@ -181,7 +157,7 @@ int listener_init(transocks_global_env *env) {
     return -1;
 }
 
-void listener_deinit(transocks_global_env *env) {
+void tcp_listener_destory(transocks_global_env *env) {
     if (env == NULL) return;
     if (env->tcpListener != NULL) {
         if (env->tcpListener->listenerEvent != NULL) {

@@ -254,8 +254,8 @@ int transocks_parse_sockaddr_port(const char *str, struct sockaddr *sa, socklen_
     return 0;
 }
 
-int new_tcp4_socket(void) {
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+int new_stream_socket(sa_family_t family) {
+    int sockfd = socket(family, SOCK_STREAM, 0);
     if (sockfd < 0) {
         LOGE_ERRNO("AF_INET, SOCK_STREAM");
         exit(errno);
@@ -263,17 +263,8 @@ int new_tcp4_socket(void) {
     return sockfd;
 }
 
-int new_tcp6_socket(void) {
-    int sockfd = socket(AF_INET6, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        LOGE_ERRNO("AF_INET6, SOCK_STREAM");
-        exit(errno);
-    }
-    return sockfd;
-}
-
-int new_udp4_socket(void) {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+int new_dgram_socket(sa_family_t family) {
+    int sockfd = socket(family, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         LOGE_ERRNO("AF_INET, SOCK_DGRAM");
         exit(errno);
@@ -281,17 +272,8 @@ int new_udp4_socket(void) {
     return sockfd;
 }
 
-int new_udp6_socket(void) {
-    int sockfd = socket(AF_INET6, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        LOGE_ERRNO("AF_INET6, SOCK_DGRAM");
-        exit(errno);
-    }
-    return sockfd;
-}
-
 int new_tcp4_listenersock(void) {
-    int sockfd = new_tcp4_socket();
+    int sockfd = new_stream_socket(AF_INET);
     apply_non_blocking(sockfd, true);
     apply_reuse_addr(sockfd, 1);
     apply_reuse_port(sockfd, 1);
@@ -299,8 +281,9 @@ int new_tcp4_listenersock(void) {
 }
 
 int new_tcp6_listenersock(void) {
-    int sockfd = new_tcp6_socket();
+    int sockfd = new_stream_socket(AF_INET6);
     apply_non_blocking(sockfd, true);
+    // ensure we accept both ipv4 and ipv6
     apply_ipv6only(sockfd, 0);
     apply_reuse_addr(sockfd, 1);
     apply_reuse_port(sockfd, 1);
@@ -322,7 +305,7 @@ int new_tcp6_listenersock_tproxy(void) {
 }
 
 int new_udp4_respsock_tproxy(void) {
-    int sockfd = new_udp4_socket();
+    int sockfd = new_dgram_socket(AF_INET);
     apply_non_blocking(sockfd, true);
     apply_reuse_addr(sockfd, 1);
     apply_ip_transparent(sockfd, 1);
@@ -330,8 +313,9 @@ int new_udp4_respsock_tproxy(void) {
 }
 
 int new_udp6_respsock_tproxy(void) {
-    int sockfd = new_udp6_socket();
+    int sockfd = new_dgram_socket(AF_INET6);
     apply_non_blocking(sockfd, true);
+    // ensure we accept both ipv4 and ipv6
     apply_ipv6only(sockfd, 0);
     apply_reuse_addr(sockfd, 1);
     apply_ip6_transparent(sockfd, 1);
@@ -348,6 +332,8 @@ int new_udp4_listenersock_tproxy(void) {
 int new_udp6_listenersock_tproxy(void) {
     int sockfd = new_udp6_respsock_tproxy();
     apply_non_blocking(sockfd, true);
+    // ensure we accept both ipv4 and ipv6
+    apply_ipv6only(sockfd, 0);
     apply_ip6_recvorigdstaddr(sockfd, 1);
     return sockfd;
 }
