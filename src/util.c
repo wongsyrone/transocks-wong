@@ -41,3 +41,9 @@ void print_help() {
     fprintf(stdout, "\t\t - [IPv6Address]:Port\n");
     fprintf(stdout, "\t\t - IPv4Address:Port\n");
 }
+
+transocks_timestamp transocks_now(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return ts.tv_sec + ts.tv_nsec * 1e-9;
+}

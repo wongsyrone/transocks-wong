@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 
 
 #include <event2/util.h>
@@ -77,8 +78,12 @@ enum {
     GETOPT_VAL_HELP
 };
 
+typedef double transocks_timestamp;
+
 int create_pipe(int *readfd, int *writefd);
 
 void print_help(void);
+
+transocks_timestamp transocks_now(void);
 
 #endif //TRANSOCKS_WONG_UTIL_H
