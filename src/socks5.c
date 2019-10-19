@@ -116,7 +116,8 @@ static void socks_send_connect_request(transocks_client *pclient) {
     struct socks_request_ipv6 *req_ip6 = NULL;
     struct sockaddr_in *sa_ip4 = NULL;
     struct sockaddr_in6 *sa_ip6 = NULL;
-    if (pclient->destAddr->ss_family == AF_INET) {
+    sa_family_t family = TRANSOCKS_SOCKET_ADDRESS_GET_SA_FAMILY(pclient->destAddr);
+    if (family == AF_INET) {
         req_ip4 = tr_malloc(sizeof(struct socks_request_ipv4));
         if (req_ip4 == NULL) goto freeClient;
         sa_ip4 = (struct sockaddr_in *) (pclient->destAddr);
@@ -130,7 +131,7 @@ static void socks_send_connect_request(transocks_client *pclient) {
         dump_data("socks_send_connect_request_v4", (char *) req_ip4, sizeof(struct socks_request_ipv4));
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(tr_free, req_ip4);
-    } else if (pclient->destAddr->ss_family == AF_INET6) {
+    } else if (family == AF_INET6) {
         req_ip6 = tr_malloc(sizeof(struct socks_request_ipv6));
         if (req_ip6 == NULL) goto freeClient;
         sa_ip6 = (struct sockaddr_in6 *) (pclient->destAddr);
@@ -246,7 +247,7 @@ static void socks5_timeout_cb(evutil_socket_t fd, short events, void *userArg) {
 void transocks_on_client_received(transocks_client *pClient) {
     LOGD("enter");
     transocks_global_env *env = pClient->globalEnv;
-    int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
+    int relay_fd = socket(TRANSOCKS_SOCKET_ADDRESS_GET_SA_FAMILY(env->relayAddr), SOCK_STREAM, 0);
     if (relay_fd < 0) {
         LOGE_ERRNO("fail to create socket");
         goto freeClient;

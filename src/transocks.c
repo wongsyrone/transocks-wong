@@ -25,18 +25,19 @@ static transocks_global_env *globalEnv = NULL;
 int main(int argc, char **argv) {
     int opt;
 
-    char *tcpListenerAddrPort = NULL;
-    char *udpListenerAddrPort = NULL;
-    char *socks5AddrPort = NULL;
-    char *pumpMethod = NULL;
-    char *transparentMethod = NULL;
+    char *userTcpListenerAddrPort = NULL;
+    char *userUdpListenerAddrPort = NULL;
+    char *userSocks5AddrPort = NULL;
+    char *userPumpMethod = NULL;
+    char *userTransparentMethod = NULL;
 
-    struct sockaddr_storage tcp_listener_ss;
-    socklen_t tcp_listener_ss_size;
-    struct sockaddr_storage udp_listener_ss;
-    socklen_t udp_listener_ss_size;
-    struct sockaddr_storage socks5_ss;
-    socklen_t socks5_ss_size;
+    transocks_socket_address tcp_listener_addr;
+    transocks_socket_address udp_listener_addr;
+    transocks_socket_address socks5_addr;
+
+    memset(&tcp_listener_addr, 0x00, sizeof(transocks_socket_address));
+    memset(&udp_listener_addr, 0x00, sizeof(transocks_socket_address));
+    memset(&socks5_addr, 0x00, sizeof(transocks_socket_address));
 
     static struct option long_options[] = {
             {
@@ -86,19 +87,19 @@ int main(int argc, char **argv) {
     while ((opt = getopt_long(argc, argv, "", long_options, NULL)) != -1) {
         switch (opt) {
             case GETOPT_VAL_TCPLISTENERADDRPORT:
-                tcpListenerAddrPort = optarg;
+                userTcpListenerAddrPort = optarg;
                 break;
             case GETOPT_VAL_UDPLISTENERADDRPORT:
-                udpListenerAddrPort = optarg;
+                userUdpListenerAddrPort = optarg;
                 break;
             case GETOPT_VAL_SOCKS5ADDRPORT:
-                socks5AddrPort = optarg;
+                userSocks5AddrPort = optarg;
                 break;
             case GETOPT_VAL_PUMPMETHOD:
-                pumpMethod = optarg;
+                userPumpMethod = optarg;
                 break;
             case GETOPT_VAL_TRANSPARENTMETHOD:
-                transparentMethod = optarg;
+                userTransparentMethod = optarg;
                 break;
             case '?':
             case 'h':
@@ -109,42 +110,42 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (tcpListenerAddrPort == NULL
-    || udpListenerAddrPort == NULL
-        || socks5AddrPort == NULL) {
+    if (userTcpListenerAddrPort == NULL
+        || userUdpListenerAddrPort == NULL
+        || userSocks5AddrPort == NULL) {
         PRINTHELP_EXIT();
     }
 
-    if (pumpMethod == NULL) {
-        pumpMethod = PUMPMETHOD_BUFFER;
+    if (userPumpMethod == NULL) {
+        userPumpMethod = PUMPMETHOD_BUFFER;
     }
 
-    if (transparentMethod == NULL) {
-        transparentMethod = TRANSPARENTMETHOD_REDIRECT;
+    if (userTransparentMethod == NULL) {
+        userTransparentMethod = TRANSPARENTMETHOD_REDIRECT;
     }
 
     // ignore SIGPIPE
     signal(SIGPIPE, SIG_IGN);
 
-    if (transocks_parse_sockaddr_port(tcpListenerAddrPort, (struct sockaddr *) &tcp_listener_ss, &tcp_listener_ss_size) != 0) {
-        FATAL_WITH_HELPMSG("invalid tcp listener address and port: %s", tcpListenerAddrPort);
+    if (transocks_parse_sockaddr_port(userTcpListenerAddrPort, &tcp_listener_addr) != 0) {
+        FATAL_WITH_HELPMSG("invalid tcp listener address and port: %s", userTcpListenerAddrPort);
     }
-    if (transocks_parse_sockaddr_port(udpListenerAddrPort, (struct sockaddr *) &udp_listener_ss, &udp_listener_ss_size) != 0) {
-        FATAL_WITH_HELPMSG("invalid udp listener address and port: %s", udpListenerAddrPort);
+    if (transocks_parse_sockaddr_port(userUdpListenerAddrPort, &udp_listener_addr) != 0) {
+        FATAL_WITH_HELPMSG("invalid udp listener address and port: %s", userUdpListenerAddrPort);
     }
-    if (transocks_parse_sockaddr_port(socks5AddrPort, (struct sockaddr *) &socks5_ss, &socks5_ss_size) != 0) {
-        FATAL_WITH_HELPMSG("invalid socks5 address and port: %s", socks5AddrPort);
+    if (transocks_parse_sockaddr_port(userSocks5AddrPort, &socks5_addr) != 0) {
+        FATAL_WITH_HELPMSG("invalid socks5 address and port: %s", userSocks5AddrPort);
     }
 
     // check if port exists
-    if (!validate_addr_port(&tcp_listener_ss)) {
-        FATAL_WITH_HELPMSG("fail to parse tcp listener address port: %s", tcpListenerAddrPort);
+    if (!validate_addr_port(&tcp_listener_addr)) {
+        FATAL_WITH_HELPMSG("fail to parse tcp listener address port: %s", userTcpListenerAddrPort);
     }
-    if (!validate_addr_port(&udp_listener_ss)) {
-        FATAL_WITH_HELPMSG("fail to parse udp listener address port: %s", udpListenerAddrPort);
+    if (!validate_addr_port(&udp_listener_addr)) {
+        FATAL_WITH_HELPMSG("fail to parse udp listener address port: %s", userUdpListenerAddrPort);
     }
-    if (!validate_addr_port(&socks5_ss)) {
-        FATAL_WITH_HELPMSG("fail to parse socks5 address port: %s", socks5AddrPort);
+    if (!validate_addr_port(&socks5_addr)) {
+        FATAL_WITH_HELPMSG("fail to parse socks5 address port: %s", userSocks5AddrPort);
     }
 
 
@@ -155,14 +156,12 @@ int main(int argc, char **argv) {
     if (signal_init(globalEnv) != 0) {
         goto shutdown;
     }
-    memcpy(globalEnv->tcpBindAddr, &tcp_listener_ss, sizeof(struct sockaddr_storage));
-    globalEnv->tcpBindAddrLen = tcp_listener_ss_size;
-    memcpy(globalEnv->udpBindAddr, &udp_listener_ss, sizeof(struct sockaddr_storage));
-    globalEnv->udpBindAddrLen = udp_listener_ss_size;
-    memcpy(globalEnv->relayAddr, &socks5_ss, sizeof(struct sockaddr_storage));
-    globalEnv->relayAddrLen = socks5_ss_size;
+    // TODO
+    memcpy(globalEnv->tcpBindAddr, &tcp_listener_addr, sizeof(transocks_socket_address));
+    memcpy(globalEnv->udpBindAddr, &udp_listener_addr, sizeof(transocks_socket_address));
+    memcpy(globalEnv->relayAddr, &socks5_addr, sizeof(transocks_socket_address));
 
-    globalEnv->pumpMethodName = tr_strdup(pumpMethod);
+    globalEnv->pumpMethodName = tr_strdup(userPumpMethod);
     if (globalEnv->pumpMethodName == NULL) {
         goto shutdown;
     }
@@ -171,7 +170,7 @@ int main(int argc, char **argv) {
         goto shutdown;
     }
 
-    globalEnv->transparentMethodName = tr_strdup(transparentMethod);
+    globalEnv->transparentMethodName = tr_strdup(userTransparentMethod);
     if (globalEnv->transparentMethodName == NULL) {
         goto shutdown;
     }

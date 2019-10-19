@@ -21,6 +21,9 @@
 
 #include <event2/util.h>
 
+/* If for some reason more than 4M are allocated on the stack, let's abort immediately. It's better than
+ * proceeding and smashing the stack limits. Note that by default RLIMIT_STACK is 8M on Linux. */
+#define TRANSOCKS_ALLOCA_MAX (4U*1024U*1024U)
 
 #if defined(__GNUC__) || defined(__clang__)
 #define TRANSOCKS_ATTR(s) __attribute__((s))
@@ -61,13 +64,15 @@
         }                                \
     } while (0)
 
-#define TRANSOCKS_CLOSE(fd)                 \
-    do {                                    \
-        if ((fd) >= 0) {                    \
-            TEMP_FAILURE_RETRY(close(fd));  \
-            (fd) = -1;                      \
-        }                                   \
-    } while (0)
+#define memdupa_suffix0(p, l)                             \
+        ({                                                \
+                void *_q_;                                \
+                size_t _l_ = l;                           \
+                assert(_l_ <= TRANSOCKS_ALLOCA_MAX);      \
+                _q_ = alloca(_l_ + 1);                    \
+                ((uint8_t*) _q_)[_l_] = 0;                \
+                memcpy(_q_, p, _l_);                      \
+        })
 
 enum {
     GETOPT_VAL_TCPLISTENERADDRPORT,

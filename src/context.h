@@ -18,6 +18,7 @@
 #include "util.h"
 #include "log.h"
 #include "list.h"
+#include "netutils.h"
 
 // TODO: redesign states
 enum transocks_client_state {
@@ -34,11 +35,6 @@ enum transocks_listener_type {
     listener_UNKNOWN
 };
 
-enum transocks_client_type {
-    client_tcp,
-    client_udp,
-    client_UNKNOWN
-};
 
 /* forward declaration */
 
@@ -52,17 +48,17 @@ typedef struct transocks_client_t transocks_client;
 // the connection listener
 typedef struct transocks_listener_t transocks_listener;
 
+// the socket
+typedef struct transocks_socket_t transocks_socket;
+
 /* detailed declaration */
 
 typedef struct transocks_global_env_t {
     char *pumpMethodName;               // pump method name
     char *transparentMethodName;        // transparent method name
-    struct sockaddr_storage *tcpBindAddr;  // listener addr
-    struct sockaddr_storage *udpBindAddr; // udp listener addr
-    struct sockaddr_storage *relayAddr; // SOCKS5 server addr
-    socklen_t tcpBindAddrLen;              // tcp listener addr socklen
-    socklen_t udpBindAddrLen;          // udp listener addr socklen
-    socklen_t relayAddrLen;             // SOCKS5 server addr socklen
+    transocks_socket *tcpBindSocket;  // tcp listener
+    transocks_socket *udpBindSocket; // udp listener
+    transocks_socket *relaySocket; // SOCKS5
     struct event_base *eventBaseLoop;
     transocks_listener *tcpListener;
     transocks_listener *udpListener;
@@ -75,23 +71,18 @@ typedef struct transocks_global_env_t {
 
 typedef struct transocks_client_t {
     struct list_head dLinkListEntry;
-    struct transocks_global_env_t *globalEnv;
-    struct sockaddr_storage *clientAddr;   // accepted client addr
-    struct sockaddr_storage *destAddr;     // accepted client destination addr
-    int clientFd;                          // accepted client fd
-    int relayFd;
-    socklen_t clientAddrLen;               // accepted client addr socklen
-    socklen_t destAddrLen;                 // accepted client destination addr socklen
+    transocks_global_env *globalEnv;
+    transocks_socket *clientSocket;   // accepted client addr
+    transocks_socket_address *destAddr;     // accepted client destination addr
     struct bufferevent *clientBufferEvent; // client output -> relay input
     struct bufferevent *relayBufferEvent;  // relay output -> client input
     struct event *timeoutEvent;
     void *userArg;
     enum transocks_client_state clientState;
-    enum transocks_client_type clientType;
-    bool isClientShutdownRead;
-    bool isClientShutdownWrite;
-    bool isRelayShutdownRead;
-    bool isRelayShutdownWrite;
+    uint8_t isClientShutdownRead:1;
+    uint8_t isClientShutdownWrite:1;
+    uint8_t isRelayShutdownRead:1;
+    uint8_t isRelayShutdownWrite:1;
 } transocks_client;
 
 typedef struct transocks_listener_t {
@@ -99,6 +90,19 @@ typedef struct transocks_listener_t {
     int listenerFd;              // listener socket fd
     struct event *listenerEvent; // listener EV_READ
 } transocks_listener;
+
+typedef struct transocks_socket_t {
+    int sockfd;
+    transocks_socket_address *address;
+} transocks_socket;
+
+/* util macro for transocks_socket_t */
+#define TRANSOCKS_SOCKET_GET_SOCK_FD(a) ((a)->sockfd)
+#define TRANSOCKS_SOCKET_GET_SOCKET_ADDRESS(a) ( *((a)->address) )
+
+#define TRANSOCKS_SOCKET_GET_SOCK_FD_PTR(a) ( &((a)->sockfd) )
+#define TRANSOCKS_SOCKET_GET_SOCKET_ADDRESS_PTR(a) ( (a)->address )
+
 
 /* context structures util functions */
 
@@ -109,6 +113,14 @@ void transocks_global_env_free(transocks_global_env *);
 transocks_client *transocks_client_new(transocks_global_env *);
 
 void transocks_client_free(transocks_client *);
+
+transocks_socket *transocks_socket_new(void);
+
+void transocks_socket_free(transocks_socket *);
+
+transocks_socket_address *transocks_socket_address_new(void);
+
+void transocks_socket_address_free(transocks_socket_address *);
 
 int transocks_client_set_timeout(struct event_base *,
                                  struct event *,

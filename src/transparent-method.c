@@ -34,42 +34,7 @@ int transocks_transparent_method_init(transocks_global_env *env) {
         LOGE("unregistered tcp_listener_sock_setup_fn handler");
         return -1;
     }
-    if (transparentMethodImpl->udp_listener_sock_setup_fn == NULL) {
-        LOGE("unregistered udp_listener_sock_setup_fn handler");
-        return -1;
-    }
-    if (transparentMethodImpl->tcp_on_client_received_fn == NULL) {
-        LOGE("unregistered tcp_on_client_received_fn handler");
-        return -1;
-    }
-    if (transparentMethodImpl->udp_on_client_received_fn == NULL) {
-        LOGE("unregistered udp_on_client_received_fn handler");
-        return -1;
-    }
-    if (transparentMethodImpl->tcp_client_sock_setup == NULL) {
-        LOGE("unregistered tcp_client_sock_setup handler");
-        return -1;
-    }
-    if (transparentMethodImpl->udp_client_sock_setup == NULL) {
-        LOGE("unregistered udp_client_sock_setup handler");
-        return -1;
-    }
-    if (transparentMethodImpl->tcp_get_orig_dest_addr == NULL) {
-        LOGE("unregistered tcp_get_orig_dest_addr handler");
-        return -1;
-    }
-    if (transparentMethodImpl->udp_get_orig_dest_addr == NULL) {
-        LOGE("unregistered udp_get_orig_dest_addr handler");
-        return -1;
-    }
-    if (transparentMethodImpl->tcp_timeout_fn == NULL) {
-        LOGE("unregistered tcp_timeout_fn handler");
-        return -1;
-    }
-    if (transparentMethodImpl->udp_timeout_fn == NULL) {
-        LOGE("unregistered udp_timeout_fn handler");
-        return -1;
-    }
+
     return 0;
 }
 

@@ -26,13 +26,12 @@ static void udp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
     char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) env->tcpBindAddr, env->tcpBindAddrLen);
+    generate_sockaddr_readable_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) env->tcpBindAddr, env->tcpBindAddrLen);
 
-    pclient->clientAddrLen = acceptedSrcSockLen;
     memcpy((void *) (pclient->clientAddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
-    generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
+    generate_sockaddr_readable_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
 
 
     if (get_orig_dst_tcp_redirect(clientFd, pclient->destAddr, &pclient->destAddrLen) != 0) {
@@ -40,8 +39,8 @@ static void udp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
         goto freeClient;
     }
 
-    generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->destAddr), pclient->destAddrLen);
+    generate_sockaddr_readable_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
+                                   (const struct sockaddr *) (pclient->destAddr), pclient->destAddrLen);
 
 
     LOGI("%s accept a conn %s -> %s", bindaddrstr, srcaddrstr, destaddrstr);

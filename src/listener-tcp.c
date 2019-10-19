@@ -12,10 +12,12 @@ static void tcp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
     TRANSOCKS_UNUSED(events);
     transocks_global_env *env = (transocks_global_env *) userArg;
     int clientFd;
-    struct sockaddr_storage acceptedSrcSockAddr;
-    socklen_t acceptedSrcSockLen = sizeof(struct sockaddr_storage);
+    transocks_socket_address acceptedSrcSockAddr;
+    memset(&acceptedSrcSockAddr, 0x00, sizeof(transocks_socket_address));
+    struct sockaddr *acceptedSrcSockPtr = TRANSOCKS_SOCKET_ADDRESS_GET_SOCKADDR_PTR(&acceptedSrcSockAddr);
+    socklen_t *acceptedSrcSockLenPtr = TRANSOCKS_SOCKET_ADDRESS_GET_SOCKLEN_PTR(&acceptedSrcSockAddr);
     clientFd = accept(env->tcpListener->listenerFd,
-                      (struct sockaddr *) (&acceptedSrcSockAddr), &acceptedSrcSockLen);
+                      acceptedSrcSockPtr, acceptedSrcSockLenPtr);
     if (clientFd < 0) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // wait for next event
@@ -25,7 +27,7 @@ static void tcp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
             return;
         }
     }
-    if (acceptedSrcSockLen == 0) {
+    if (*acceptedSrcSockLenPtr == 0) {
         goto freeFd;
     }
     if (apply_non_blocking(clientFd, true) != 0) {
@@ -48,29 +50,14 @@ static void tcp_listener_cb(evutil_socket_t fd, short events, void *userArg) {
         LOGE("fail to allocate memory");
         goto freeClient;
     }
-
-    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) env->tcpBindAddr, env->tcpBindAddrLen);
-
-    pclient->clientAddrLen = acceptedSrcSockLen;
-    memcpy((void *) (pclient->clientAddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
-    generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
-
-
-    if (get_orig_dst_tcp_redirect(clientFd, pclient->destAddr, &pclient->destAddrLen) != 0) {
+    if (get_orig_dst_tcp_redirect(clientFd, pclient->destAddr) != 0) {
         LOGE("fail to get origdestaddr, close fd");
         goto freeClient;
     }
 
-    generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->destAddr), pclient->destAddrLen);
+    print_accepted_client_info(env->tcpBindAddr, &acceptedSrcSockAddr, pclient->destAddr);
 
 
-    LOGI("%s accept a conn %s -> %s", bindaddrstr, srcaddrstr, destaddrstr);
     pclient->clientFd = clientFd;
     pclient->globalEnv = env;
 
@@ -115,9 +102,11 @@ int tcp_listener_init(transocks_global_env *env) {
     int err;
     int fd;
 
+    struct sockaddr *addr = TRANSOCKS_SOCKET_ADDRESS_GET_SOCKADDR_PTR(env->tcpBindAddr);
+    socklen_t *socklen = TRANSOCKS_SOCKET_ADDRESS_GET_SOCKLEN_PTR(env->tcpBindAddr);
     // TODO
 
-    err = bind(fd, (struct sockaddr *) (env->tcpBindAddr), env->tcpBindAddrLen);
+    err = bind(fd, addr, *socklen);
     if (err != 0) {
         LOGE_ERRNO("fail to bind");
         goto closeFd;

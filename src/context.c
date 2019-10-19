@@ -32,11 +32,7 @@ transocks_global_env *transocks_global_env_new(void) {
     env->pumpMethodName = NULL;
     env->transparentMethodName = NULL;
     env->tcpBindAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
-    env->relayAddr = tr_calloc(1, sizeof(struct sockaddr_storage));
-    if (env->tcpBindAddr == NULL || env->relayAddr == NULL) {
-        LOGE("fail to allocate memory");
-        goto fail;
-    }
+
     env->eventBaseLoop = event_base_new();
     if (env->eventBaseLoop == NULL) {
         LOGE("fail to allocate event_base");
@@ -79,8 +75,6 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->globalEnv = NULL;
     client->clientAddr = NULL;
     client->destAddr = NULL;
-    client->clientFd = -1;
-    client->relayFd = -1;
     client->clientBufferEvent = NULL;
     client->relayBufferEvent = NULL;
     client->timeoutEvent = NULL;
@@ -91,21 +85,13 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->isRelayShutdownWrite = false;
     client->clientState = client_new;
 
-    client->clientAddr = tr_malloc(sizeof(struct sockaddr_storage));
-    client->destAddr = tr_malloc(sizeof(struct sockaddr_storage));
-    if (client->clientAddr == NULL
-        || client->destAddr == NULL) {
-        LOGE("fail to allocate memory");
-        goto fail;
-    }
 
     client->globalEnv = env;
 
     return client;
 
     fail:
-    TRANSOCKS_FREE(tr_free, client->clientAddr);
-    TRANSOCKS_FREE(tr_free, client->destAddr);
+
     TRANSOCKS_FREE(tr_free, client);
     return NULL;
 }
@@ -130,28 +116,65 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_FREE(bufferevent_free, pClient->relayBufferEvent);
     TRANSOCKS_FREE(bufferevent_free, pClient->clientBufferEvent);
 
-    if (pClient->clientState != client_new && pClient->clientState != client_INVALID) {
-        if (pClient->clientFd >= 0) {
-            TRANSOCKS_SHUTDOWN(pClient->clientFd, SHUT_RDWR);
-        }
-        if (pClient->relayFd >= 0) {
-            TRANSOCKS_SHUTDOWN(pClient->relayFd, SHUT_RDWR);
-        }
-    }
-
-    TRANSOCKS_FREE(tr_free, pClient->clientAddr);
-    TRANSOCKS_FREE(tr_free, pClient->destAddr);
 
     pClient->clientState = client_INVALID;
 
-    TRANSOCKS_CLOSE(pClient->clientFd);
-    TRANSOCKS_CLOSE(pClient->relayFd);
+    transocks_socket_free(pClient->clientSocket);
+    transocks_socket_address_free(pClient->destAddr);
 
     if (!list_empty(&pClient->dLinkListEntry)) {
         list_del(&(pClient->dLinkListEntry));
     }
 
     TRANSOCKS_FREE(tr_free, pClient);
+}
+
+transocks_socket *transocks_socket_new(void) {
+    transocks_socket *ret = tr_calloc(1, sizeof(transocks_socket));
+    if (ret == NULL) {
+        LOGE("fail to allocate memory");
+        goto fail;
+    }
+    ret->sockfd = TRANSOCKS_INVALID_SOCKET;
+    ret->address = transocks_socket_address_new();
+    if (ret->address == NULL) {
+        goto fail;
+    }
+    return ret;
+
+    fail:
+    transocks_socket_free(ret);
+    return NULL;
+}
+
+void transocks_socket_free(transocks_socket *psocket) {
+    if (psocket == NULL) return;
+    if (psocket->sockfd >= 0) {
+        TRANSOCKS_SHUTDOWN(psocket->sockfd, SHUT_RDWR);
+    }
+    TRANSOCKS_CLOSE(psocket->sockfd);
+
+    transocks_socket_address_free(psocket->address);
+
+    TRANSOCKS_FREE(tr_free, psocket);
+}
+
+transocks_socket_address *transocks_socket_address_new(void) {
+    transocks_socket_address *ret = tr_calloc(1, sizeof(transocks_socket_address));
+    if (ret == NULL) {
+        LOGE("fail to allocate memory");
+        goto fail;
+    }
+    return ret;
+
+    fail:
+    transocks_socket_address_free(ret);
+    return NULL;
+}
+
+void transocks_socket_address_free(transocks_socket_address *paddress) {
+    if (paddress == NULL) return;
+    TRANSOCKS_FREE(tr_free, paddress);
 }
 
 int transocks_client_set_timeout(struct event_base *eventBase,
@@ -211,12 +234,12 @@ void transocks_dump_all_client_info(transocks_global_env *env) {
 }
 
 void transocks_client_dump_info(transocks_client *pclient) {
-    char srcaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
-    generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->clientAddr), pclient->clientAddrLen);
-    generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->destAddr), pclient->destAddrLen);
+    char srcaddrstr[TRANSOCKS_ADDRPORTSTRLEN_MAX];
+    char destaddrstr[TRANSOCKS_ADDRPORTSTRLEN_MAX];
+    generate_sockaddr_readable_str(srcaddrstr, TRANSOCKS_ADDRPORTSTRLEN_MAX,
+                                   pclient->clientAddr);
+    generate_sockaddr_readable_str(destaddrstr, TRANSOCKS_ADDRPORTSTRLEN_MAX,
+                                   pclient->destAddr);
     fprintf(stdout, "\n\t%s -> %s", srcaddrstr, destaddrstr);
     fprintf(stdout, "\n\tfd: client %d relay %d",
             pclient->clientFd, pclient->relayFd);
