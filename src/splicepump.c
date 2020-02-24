@@ -23,20 +23,6 @@
 
 #define TRANSOCKS_SPLICE_SHOULD_LOG_ERR(err) ((err) != EBADF && (err) != ENOTCONN)
 
-/*
- * According to libevent documentation, event_active() is rarely used, we
- * use it to let producer controls consumer(from pipe's perspective), thus
- * the event being used should NOT be passed to event_add() as producer
- * triggers the consumer and producer controls when the data comes to the end
- * We use the simple trick to activate event that doesn't.
- */
-#define TRANSOCKS_EVENT_ACTIVE(ev, events)            \
-    do {                                              \
-        if (!event_pending((ev), (events), NULL)) {   \
-            event_active((ev), (events), 0);          \
-        }                                             \
-    } while (0)
-
 transocks_pump transocks_splicepump_ops;
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient);
@@ -80,7 +66,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     ssize_t bytesRead;
     bytesRead = splice(pclient->clientFd, NULL, ppump->outbound_pipe->pipe_writefd, NULL,
-                       ppump->outbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+                       ppump->outbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // if the pipe is almost full, splice() cannot move page, we should
@@ -108,8 +94,6 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
-
-    TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
 }
 
 static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events, void *arg) {
@@ -119,7 +103,8 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     ssize_t bytesWritten;
     bytesWritten = splice(ppump->outbound_pipe->pipe_readfd, NULL, pclient->relayFd, NULL,
-                          (size_t) ppump->outbound_pipe->data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+                          (size_t) ppump->outbound_pipe->data_in_pipe,
+                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // pipe empty and write end of pipe not closed
@@ -143,10 +128,6 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
-    if (pclient->client_shutdown_read && !pclient->relay_shutdown_write) {
-        // self activate until EOF or error
-        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_WRITE);
-    }
 }
 
 static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, void *arg) {
@@ -156,7 +137,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     ssize_t bytesRead;
     bytesRead = splice(pclient->relayFd, NULL, ppump->inbound_pipe->pipe_writefd, NULL,
-                       ppump->inbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+                       ppump->inbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     if (bytesRead == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // if the pipe is almost full, splice() cannot move page, we should
@@ -184,8 +165,6 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
-
-    TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
 }
 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg) {
@@ -195,7 +174,8 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
     ssize_t bytesWritten;
     bytesWritten = splice(ppump->inbound_pipe->pipe_readfd, NULL, pclient->clientFd, NULL,
-                          (size_t) ppump->inbound_pipe->data_in_pipe, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+                          (size_t) ppump->inbound_pipe->data_in_pipe,
+                          SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
     if (bytesWritten == -1) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // pipe empty and write end of pipe not closed
@@ -217,10 +197,6 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
-    }
-    if (pclient->relay_shutdown_read && !pclient->client_shutdown_write) {
-        // self activate until EOF or error
-        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_WRITE);
     }
 }
 
@@ -361,7 +337,7 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (pump->client_read_ev == NULL) {
         goto fail;
     }
-    pump->client_write_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_WRITE,
+    pump->client_write_ev = event_new(penv->eventBaseLoop, pump->inbound_pipe->pipe_readfd, EV_READ | EV_PERSIST,
                                       transocks_splicepump_client_writecb, pclient);
     if (pump->client_write_ev == NULL) {
         goto fail;
@@ -371,16 +347,22 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (pump->relay_read_ev == NULL) {
         goto fail;
     }
-    pump->relay_write_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_WRITE,
+    pump->relay_write_ev = event_new(penv->eventBaseLoop, pump->outbound_pipe->pipe_readfd, EV_READ | EV_PERSIST,
                                      transocks_splicepump_relay_writecb, pclient);
     if (pump->relay_write_ev == NULL) {
         goto fail;
     }
-    // start both side read and let read callbacks control write events
+    // start both side read
     if (event_add(pump->client_read_ev, NULL) != 0) {
         goto fail;
     }
+    if (event_add(pump->client_write_ev, NULL) != 0) {
+        goto fail;
+    }
     if (event_add(pump->relay_read_ev, NULL) != 0) {
+        goto fail;
+    }
+    if (event_add(pump->relay_write_ev, NULL) != 0) {
         goto fail;
     }
     return 0;
