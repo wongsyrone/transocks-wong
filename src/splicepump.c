@@ -128,6 +128,11 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
+    if (pclient->client_shutdown_read) {
+        if (ppump->outbound_pipe->data_in_pipe > 0 || !pclient->relay_shutdown_write) {
+            event_active(ppump->relay_write_ev, EV_READ, 0);
+        }
+    }
 }
 
 static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, void *arg) {
@@ -197,6 +202,11 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         freeClient:
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
+    }
+    if (pclient->relay_shutdown_read) {
+        if (ppump->inbound_pipe->data_in_pipe > 0 || !pclient->client_shutdown_write) {
+            event_active(ppump->client_write_ev, EV_READ, 0);
+        }
     }
 }
 
