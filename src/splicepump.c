@@ -42,11 +42,21 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg);
 
 TRANSOCKS_ALWAYS_INLINE
-static bool splicepump_check_close(transocks_client *pclient) {
+static bool splicepump_check_inbound_close(transocks_client *pclient) {
+    return pclient->client_shutdown_write
+           || pclient->relay_shutdown_read;
+}
+
+TRANSOCKS_ALWAYS_INLINE
+static bool splicepump_check_outbound_close(transocks_client *pclient) {
     return pclient->client_shutdown_read
-           && pclient->client_shutdown_write
-           && pclient->relay_shutdown_read
-           && pclient->relay_shutdown_write;
+           || pclient->relay_shutdown_write;
+}
+
+TRANSOCKS_ALWAYS_INLINE
+static bool splicepump_check_close(transocks_client *pclient) {
+    return splicepump_check_inbound_close(pclient)
+           && splicepump_check_outbound_close(pclient);
 }
 
 static int getpipesize(int fd) {
