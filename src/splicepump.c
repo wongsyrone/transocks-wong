@@ -27,6 +27,8 @@ transocks_pump transocks_splicepump_ops;
 
 static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient);
 
+static transocks_splicepump *transocks_get_splicepump(transocks_client *pclient);
+
 static int getpipesize(int fd);
 
 static void transocks_splicepump_dump_info(transocks_client *pclient);
@@ -73,7 +75,7 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
     TRANSOCKS_UNUSED(fd);
     TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     ssize_t bytesRead;
     bytesRead = splice(pclient->clientFd, NULL, ppump->outbound_pipe->pipe_writefd, NULL,
                        ppump->outbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
@@ -110,7 +112,7 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
     TRANSOCKS_UNUSED(fd);
     TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     ssize_t bytesWritten;
     bytesWritten = splice(ppump->outbound_pipe->pipe_readfd, NULL, pclient->relayFd, NULL,
                           (size_t) ppump->outbound_pipe->data_in_pipe,
@@ -149,7 +151,7 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
     TRANSOCKS_UNUSED(fd);
     TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     ssize_t bytesRead;
     bytesRead = splice(pclient->relayFd, NULL, ppump->inbound_pipe->pipe_writefd, NULL,
                        ppump->inbound_pipe->capacity, SPLICE_F_MOVE | SPLICE_F_MORE | SPLICE_F_NONBLOCK);
@@ -186,7 +188,7 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
     TRANSOCKS_UNUSED(fd);
     TRANSOCKS_UNUSED(events);
     transocks_client *pclient = (transocks_client *) arg;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     ssize_t bytesWritten;
     bytesWritten = splice(ppump->inbound_pipe->pipe_readfd, NULL, pclient->clientFd, NULL,
                           (size_t) ppump->inbound_pipe->data_in_pipe,
@@ -257,10 +259,15 @@ static transocks_splicepump *transocks_splicepump_new(transocks_client *pclient)
     return pump;
 }
 
+static transocks_splicepump *transocks_get_splicepump(transocks_client *pclient) {
+    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    return ppump;
+}
+
 static void transocks_splicepump_free(transocks_client *pclient) {
     if (pclient == NULL)
         return;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     if (ppump == NULL)
         return;
     LOGD("enter");
@@ -297,7 +304,7 @@ static void transocks_splicepump_free(transocks_client *pclient) {
 static void transocks_splicepump_dump_info(transocks_client *pclient) {
     if (pclient == NULL)
         return;
-    transocks_splicepump *ppump = (transocks_splicepump *) (pclient->user_arg);
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
     if (ppump == NULL)
         return;
     fprintf(stdout, "\n\tpipe:");
