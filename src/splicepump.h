@@ -33,5 +33,19 @@ typedef struct transocks_splicepump_t {
     transocks_splicepipe *outbound_pipe; // client -> relay
 } transocks_splicepump;
 
+/*
+ * According to libevent documentation, event_active() is rarely used, we
+ * use it to let producer controls consumer(from pipe's perspective), thus
+ * the event being used should NOT be passed to event_add() as producer
+ * triggers the consumer and producer controls when the data comes to the end
+ * We use the simple trick to activate event that doesn't.
+ */
+#define TRANSOCKS_EVENT_ACTIVE(ev, events)            \
+    do {                                              \
+        if (!event_pending((ev), (events), NULL)) {   \
+            event_active((ev), (events), 0);          \
+        }                                             \
+    } while (0)
+
 
 #endif //TRANSOCKS_WONG_SPLICEPUMP_H

@@ -44,13 +44,33 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
 static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events, void *arg);
 
 TRANSOCKS_ALWAYS_INLINE
+static bool splicepump_check_if_inbound_closed_read_n_pipe_not_empty(transocks_client *pclient) {
+    bool closed_read = pclient->relay_shutdown_read && !pclient->client_shutdown_write;
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
+    bool pipe_not_empty = ppump->inbound_pipe->data_in_pipe > 0;
+    return closed_read && pipe_not_empty;
+}
+
+TRANSOCKS_ALWAYS_INLINE
+static bool splicepump_check_if_outbound_closed_read_n_pipe_not_empty(transocks_client *pclient) {
+    bool closed_read = pclient->client_shutdown_read && !pclient->relay_shutdown_write;
+    transocks_splicepump *ppump = transocks_get_splicepump(pclient);
+    bool pipe_not_empty = ppump->outbound_pipe->data_in_pipe > 0;
+    return closed_read && pipe_not_empty;
+}
+
+TRANSOCKS_ALWAYS_INLINE
 static bool splicepump_check_inbound_close(transocks_client *pclient) {
+    // dst becomes invalid
+    if (pclient->clientFd == -1) return true;
     return pclient->client_shutdown_write
            || pclient->relay_shutdown_read;
 }
 
 TRANSOCKS_ALWAYS_INLINE
 static bool splicepump_check_outbound_close(transocks_client *pclient) {
+    // dst becomes invalid
+    if (pclient->relayFd == -1) return true;
     return pclient->client_shutdown_read
            || pclient->relay_shutdown_write;
 }
@@ -83,6 +103,11 @@ static void transocks_splicepump_client_readcb(evutil_socket_t fd, short events,
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // if the pipe is almost full, splice() cannot move page, we should
             // empty the pipe as soon as possible
+            if (!splicepump_check_outbound_close(pclient)) {
+                LOGD("active relay write event");
+                TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_READ);
+                return;
+            }
         } else {
             // error, should close
             if (TRANSOCKS_SPLICE_SHOULD_LOG_ERR(errno))
@@ -140,10 +165,8 @@ static void transocks_splicepump_relay_writecb(evutil_socket_t fd, short events,
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
-    if (pclient->client_shutdown_read) {
-        if (ppump->outbound_pipe->data_in_pipe > 0 || !pclient->relay_shutdown_write) {
-            event_active(ppump->relay_write_ev, EV_READ, 0);
-        }
+    if (splicepump_check_if_outbound_closed_read_n_pipe_not_empty(pclient)) {
+        TRANSOCKS_EVENT_ACTIVE(ppump->relay_write_ev, EV_READ);
     }
 }
 
@@ -159,6 +182,11 @@ static void transocks_splicepump_relay_readcb(evutil_socket_t fd, short events, 
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
             // if the pipe is almost full, splice() cannot move page, we should
             // empty the pipe as soon as possible
+            if (!splicepump_check_inbound_close(pclient)) {
+                LOGD("active client write event");
+                TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_READ);
+                return;
+            }
         } else {
             // error, should close
             if (TRANSOCKS_SPLICE_SHOULD_LOG_ERR(errno))
@@ -215,10 +243,8 @@ static void transocks_splicepump_client_writecb(evutil_socket_t fd, short events
         TRANSOCKS_FREE(transocks_splicepump_free, pclient);
         return;
     }
-    if (pclient->relay_shutdown_read) {
-        if (ppump->inbound_pipe->data_in_pipe > 0 || !pclient->client_shutdown_write) {
-            event_active(ppump->client_write_ev, EV_READ, 0);
-        }
+    if (splicepump_check_if_inbound_closed_read_n_pipe_not_empty(pclient)) {
+        TRANSOCKS_EVENT_ACTIVE(ppump->client_write_ev, EV_READ);
     }
 }
 
@@ -271,6 +297,15 @@ static void transocks_splicepump_free(transocks_client *pclient) {
     if (ppump == NULL)
         return;
     LOGD("enter");
+
+    TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
+    TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
+    TRANSOCKS_FREE(tr_free, ppump->inbound_pipe);
+
+    TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
+    TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
+    TRANSOCKS_FREE(tr_free, ppump->outbound_pipe);
+
     if (ppump->client_read_ev != NULL) {
         event_del(ppump->client_read_ev);
     }
@@ -287,14 +322,6 @@ static void transocks_splicepump_free(transocks_client *pclient) {
     TRANSOCKS_FREE(event_free, ppump->client_write_ev);
     TRANSOCKS_FREE(event_free, ppump->relay_read_ev);
     TRANSOCKS_FREE(event_free, ppump->relay_write_ev);
-
-    TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_readfd);
-    TRANSOCKS_CLOSE(ppump->inbound_pipe->pipe_writefd);
-    TRANSOCKS_FREE(tr_free, ppump->inbound_pipe);
-
-    TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_readfd);
-    TRANSOCKS_CLOSE(ppump->outbound_pipe->pipe_writefd);
-    TRANSOCKS_FREE(tr_free, ppump->outbound_pipe);
 
     TRANSOCKS_FREE(tr_free, ppump);
     // call outer free func
