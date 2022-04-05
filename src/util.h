@@ -94,6 +94,8 @@
 
 #define TRANSOCKS_SHUTDOWN(fd, how)             TEMP_FAILURE_RETRY(shutdown(fd, how))
 
+#define TRANSOCKS_IS_INVALID_FD(fd) ((fd) == -1)
+
 enum {
     GETOPT_VAL_LISTENERADDRPORT,
     GETOPT_VAL_SOCKS5ADDRPORT,
