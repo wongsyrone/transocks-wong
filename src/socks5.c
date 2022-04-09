@@ -97,10 +97,10 @@ static void socks_send_connect_request(transocks_client *pclient) {
     struct socks_request_ipv6 *req_ip6 = NULL;
     struct sockaddr_in *sa_ip4 = NULL;
     struct sockaddr_in6 *sa_ip6 = NULL;
-    if (pclient->destaddr->ss_family == AF_INET) {
+    if (pclient->dest_addr->ss_family == AF_INET) {
         req_ip4 = tr_malloc(sizeof(struct socks_request_ipv4));
         if (req_ip4 == NULL) goto freeClient;
-        sa_ip4 = (struct sockaddr_in *) (pclient->destaddr);
+        sa_ip4 = (struct sockaddr_in *) (pclient->dest_addr);
         req_ip4->ver = SOCKS5_VERSION;
         req_ip4->cmd = SOCKS5_CMD_CONNECT;
         req_ip4->rsv = 0x00;
@@ -111,10 +111,10 @@ static void socks_send_connect_request(transocks_client *pclient) {
         dump_data("socks_send_connect_request_v4", (char *) req_ip4, sizeof(struct socks_request_ipv4));
         bufferevent_write(relay_bev, (const void *) req_ip4, sizeof(struct socks_request_ipv4));
         TRANSOCKS_FREE(tr_free, req_ip4);
-    } else if (pclient->destaddr->ss_family == AF_INET6) {
+    } else if (pclient->dest_addr->ss_family == AF_INET6) {
         req_ip6 = tr_malloc(sizeof(struct socks_request_ipv6));
         if (req_ip6 == NULL) goto freeClient;
-        sa_ip6 = (struct sockaddr_in6 *) (pclient->destaddr);
+        sa_ip6 = (struct sockaddr_in6 *) (pclient->dest_addr);
         req_ip6->ver = SOCKS5_VERSION;
         req_ip6->cmd = SOCKS5_CMD_CONNECT;
         req_ip6->rsv = 0x00;
@@ -225,7 +225,7 @@ static void socks5_timeout_cb(evutil_socket_t fd, short events, void *userArg) {
 void transocks_start_connect_relay(transocks_client *pClient) {
     LOGD("enter");
     transocks_global_env *env = pClient->global_env;
-    int relay_fd = socket(env->relayAddr->ss_family, SOCK_STREAM, 0);
+    int relay_fd = socket(env->relay_addr->ss_family, SOCK_STREAM, 0);
     if (relay_fd < 0) {
         LOGE_ERRNO("fail to create socket");
         goto freeClient;
@@ -243,7 +243,7 @@ void transocks_start_connect_relay(transocks_client *pClient) {
         goto closeFd;
     }
 
-    pClient->relayFd = relay_fd;
+    pClient->relay_fd = relay_fd;
 
     // create relay bev
     struct bufferevent *relay_bev = bufferevent_socket_new(env->eventBaseLoop,
@@ -260,7 +260,7 @@ void transocks_start_connect_relay(transocks_client *pClient) {
 
     transocks_client_set_timeout(pClient, &socks5_timeout_tv, socks5_timeout_cb, pClient);
     if (bufferevent_socket_connect(pClient->relay_bev,
-                                   (const struct sockaddr *) (env->relayAddr), env->relayAddrLen) != 0) {
+                                   (const struct sockaddr *) (env->relay_addr), env->relay_addr_len) != 0) {
         LOGE("fail to connect to relay");
         goto freeBev;
     }

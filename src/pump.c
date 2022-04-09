@@ -21,14 +21,14 @@ static transocks_pump *pumpMethodImpl = NULL;
 int transocks_pump_init(transocks_global_env *env) {
     transocks_pump **ppump;
     TRANSOCKS_FOREACH(ppump, transocks_pumps) {
-        if (!strcmp(env->pumpMethodName, (*ppump)->name)) {
+        if (!strcmp(env->pump_method_name, (*ppump)->name)) {
             pumpMethodImpl = *ppump;
             break;
         }
     }
     // sanity checks
     if (pumpMethodImpl == NULL) {
-        LOGE("cannot find pump impl %s", env->pumpMethodName);
+        LOGE("cannot find pump impl %s", env->pump_method_name);
         return -1;
     }
     if (pumpMethodImpl->start_pump_fn == NULL) {

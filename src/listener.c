@@ -13,7 +13,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     int clientFd;
     struct sockaddr_storage acceptedSrcSockAddr;
     socklen_t acceptedSrcSockLen = sizeof(struct sockaddr_storage);
-    clientFd = accept(env->listener->listenerFd,
+    clientFd = accept(env->listener->listener_fd,
                       (struct sockaddr *) (&acceptedSrcSockAddr), &acceptedSrcSockLen);
     if (clientFd < 0) {
         if (TRANSOCKS_IS_RETRIABLE(errno)) {
@@ -52,25 +52,25 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
     char bindaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     char destaddrstr[TRANSOCKS_INET_ADDRPORTSTRLEN];
     generate_sockaddr_port_str(bindaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) env->bindAddr, env->bindAddrLen);
+                               (const struct sockaddr *) env->bind_addr, env->bind_addr_len);
 
-    pclient->clientaddrlen = acceptedSrcSockLen;
-    memcpy((void *) (pclient->clientaddr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
+    pclient->client_addr_len = acceptedSrcSockLen;
+    memcpy((void *) (pclient->client_addr), (void *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
     generate_sockaddr_port_str(srcaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
                                (const struct sockaddr *) (&acceptedSrcSockAddr), acceptedSrcSockLen);
 
 
-    if (getorigdst(clientFd, pclient->destaddr, &pclient->destaddrlen) != 0) {
+    if (getorigdst(clientFd, pclient->dest_addr, &pclient->dest_addr_len) != 0) {
         LOGE("fail to get origdestaddr, close fd");
         goto freeClient;
     }
 
     generate_sockaddr_port_str(destaddrstr, TRANSOCKS_INET_ADDRPORTSTRLEN,
-                               (const struct sockaddr *) (pclient->destaddr), pclient->destaddrlen);
+                               (const struct sockaddr *) (pclient->dest_addr), pclient->dest_addr_len);
 
 
     LOGI("%s accept a conn %s -> %s", bindaddrstr, srcaddrstr, destaddrstr);
-    pclient->clientFd = clientFd;
+    pclient->client_fd = clientFd;
     pclient->global_env = env;
 
     struct bufferevent *client_bev = bufferevent_socket_new(env->eventBaseLoop,
@@ -93,7 +93,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
 
     pclient->client_bev = client_bev;
 
-    list_add(&(pclient->dlinklistentry), &(env->clientDlinkList));
+    list_add(&(pclient->single_client_dlinklist_entry), &(env->current_clients_dlinklist));
 
     // start connecting SOCKS5 relay
     transocks_start_connect_relay(pclient);
@@ -112,7 +112,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
 int listener_init(transocks_global_env *env) {
     int on = 1;
     int err;
-    int fd = socket(env->bindAddr->ss_family, SOCK_STREAM, 0);
+    int fd = socket(env->bind_addr->ss_family, SOCK_STREAM, 0);
     if (fd < 0) {
         LOGE_ERRNO("fail to create socket");
         return -1;
@@ -133,14 +133,14 @@ int listener_init(transocks_global_env *env) {
         goto closeFd;
     }
     // ensure we accept both ipv4 and ipv6
-    if (env->bindAddr->ss_family == AF_INET6) {
+    if (env->bind_addr->ss_family == AF_INET6) {
         if (apply_ipv6only(fd, 0) != 0) {
             LOGE("fail to disable IPV6_V6ONLY");
             goto closeFd;
         }
     }
 
-    err = bind(fd, (struct sockaddr *) (env->bindAddr), env->bindAddrLen);
+    err = bind(fd, (struct sockaddr *) (env->bind_addr), env->bind_addr_len);
     if (err != 0) {
         LOGE_ERRNO("fail to bind");
         goto closeFd;
@@ -157,7 +157,7 @@ int listener_init(transocks_global_env *env) {
         LOGE("fail to allocate memory");
         goto freeListener;
     }
-    env->listener->listenerFd = fd;
+    env->listener->listener_fd = fd;
     env->listener->listener_ev = event_new(env->eventBaseLoop, fd,
                                            EV_READ | EV_PERSIST, listener_cb, env);
     if (env->listener->listener_ev == NULL) {
@@ -187,7 +187,7 @@ void listener_deinit(transocks_global_env *env) {
             event_del(env->listener->listener_ev);
             TRANSOCKS_FREE(event_free, env->listener->listener_ev);
         }
-        TRANSOCKS_CLOSE(env->listener->listenerFd);
+        TRANSOCKS_CLOSE(env->listener->listener_fd);
         TRANSOCKS_FREE(tr_free, env->listener);
     }
 }

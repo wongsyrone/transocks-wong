@@ -93,16 +93,16 @@ int main(int argc, char **argv) {
     if (signal_init(globalEnv) != 0) {
         goto shutdown;
     }
-    memcpy(globalEnv->bindAddr, &listener_ss, sizeof(struct sockaddr_storage));
-    globalEnv->bindAddrLen = listener_ss_size;
-    memcpy(globalEnv->relayAddr, &socks5_ss, sizeof(struct sockaddr_storage));
-    globalEnv->relayAddrLen = socks5_ss_size;
+    memcpy(globalEnv->bind_addr, &listener_ss, sizeof(struct sockaddr_storage));
+    globalEnv->bind_addr_len = listener_ss_size;
+    memcpy(globalEnv->relay_addr, &socks5_ss, sizeof(struct sockaddr_storage));
+    globalEnv->relay_addr_len = socks5_ss_size;
 
     if (listener_init(globalEnv) != 0) {
         goto shutdown;
     }
-    globalEnv->pumpMethodName = strdup(pumpMethod);
-    if (globalEnv->pumpMethodName == NULL) {
+    globalEnv->pump_method_name = strdup(pumpMethod);
+    if (globalEnv->pump_method_name == NULL) {
         goto shutdown;
     }
 
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
 
     LOGI("transocks-wong started");
     LOGI("using memory allocator: " TR_USED_MEM_ALLOCATOR);
-    LOGI("using pumpmethod: %s", globalEnv->pumpMethodName);
+    LOGI("using pumpmethod: %s", globalEnv->pump_method_name);
 
     // start event loop
     event_base_dispatch(globalEnv->eventBaseLoop);

@@ -42,30 +42,30 @@ typedef struct transocks_listener_t transocks_listener;
 /* detailed declaration */
 
 typedef struct transocks_global_env_t {
-    char *pumpMethodName;               // pump method name
-    struct sockaddr_storage *bindAddr;  // listener addr
-    struct sockaddr_storage *relayAddr; // SOCKS5 server addr
-    socklen_t bindAddrLen;              // listener addr socklen
-    socklen_t relayAddrLen;             // SOCKS5 server addr socklen
+    char *pump_method_name;               // pump method name
+    struct sockaddr_storage *bind_addr;   // listener addr
+    struct sockaddr_storage *relay_addr;  // SOCKS5 server addr
+    socklen_t bind_addr_len;              // listener addr socklen
+    socklen_t relay_addr_len;             // SOCKS5 server addr socklen
     struct event_base *eventBaseLoop;
     transocks_listener *listener;
     struct event *sigterm_ev;
     struct event *sigint_ev;
     struct event *sighup_ev;
     struct event *sigusr1_ev;
-    struct list_head clientDlinkList;   // double link list of client
+    struct list_head current_clients_dlinklist;   // double link list of clients
 } transocks_global_env;
 
 
 typedef struct transocks_client_t {
-    struct list_head dlinklistentry;
+    struct list_head single_client_dlinklist_entry;
     struct transocks_global_env_t *global_env;
-    struct sockaddr_storage *clientaddr;   // accepted client addr
-    struct sockaddr_storage *destaddr;     // accepted client destination addr (from iptables)
-    int clientFd;                          // accepted client fd
-    int relayFd;
-    socklen_t clientaddrlen;               // accepted client addr socklen
-    socklen_t destaddrlen;                 // accepted client destination addr socklen
+    struct sockaddr_storage *client_addr;   // accepted client addr
+    struct sockaddr_storage *dest_addr;     // accepted client destination addr (from iptables)
+    int client_fd;                          // accepted client fd
+    int relay_fd;
+    socklen_t client_addr_len;               // accepted client addr socklen
+    socklen_t dest_addr_len;                 // accepted client destination addr socklen
     struct bufferevent *client_bev; // client output -> relay input
     struct bufferevent *relay_bev;  // relay output -> client input
     struct event *timeout_ev;
@@ -78,8 +78,8 @@ typedef struct transocks_client_t {
 } transocks_client;
 
 typedef struct transocks_listener_t {
-    int listenerFd;            // listener socket fd
-    struct event *listener_ev; // listener EV_READ
+    int listener_fd;            // listener socket fd
+    struct event *listener_ev;  // listener EV_READ
 } transocks_listener;
 
 /* context structures util functions */

@@ -75,7 +75,7 @@ static void transocks_on_fatal_failure(transocks_client *pclient) {
 static void
 transocks_check_normal_termination(transocks_client *pclient, transocks_splicepump_data_direction direction) {
     bool flag = false;
-    if (TRANSOCKS_IS_INVALID_FD(pclient->clientFd) || TRANSOCKS_IS_INVALID_FD(pclient->relayFd)) {
+    if (TRANSOCKS_IS_INVALID_FD(pclient->client_fd) || TRANSOCKS_IS_INVALID_FD(pclient->relay_fd)) {
         // not half close, we can do nothing
         flag = true;
     } else {
@@ -166,16 +166,16 @@ static void transocks_write_to_pipe(transocks_client *pclient, transocks_splicep
     struct event *ultimate_target_libevent_ev = NULL;
 
     if (direction == inbound) {
-        from_fd = pclient->relayFd;
-        ultimate_target_fd = pclient->clientFd;
+        from_fd = pclient->relay_fd;
+        ultimate_target_fd = pclient->client_fd;
         pipe = ppump->inbound_pipe;
         read_eof_flag = &(pclient->relay_shutdown_read);
         this_libevent_ev = ppump->relay_read_ev;
         ultimate_target_libevent_ev = ppump->client_write_ev;
     }
     if (direction == outbound) {
-        from_fd = pclient->clientFd;
-        ultimate_target_fd = pclient->relayFd;
+        from_fd = pclient->client_fd;
+        ultimate_target_fd = pclient->relay_fd;
         pipe = ppump->outbound_pipe;
         read_eof_flag = &(pclient->client_shutdown_read);
         this_libevent_ev = ppump->client_read_ev;
@@ -233,14 +233,14 @@ static void transocks_read_from_pipe(transocks_client *pclient, transocks_splice
     struct event *this_libevent_ev;
 
     if (direction == inbound) {
-        origin_source_fd = pclient->relayFd;
-        to_fd = pclient->clientFd;
+        origin_source_fd = pclient->relay_fd;
+        to_fd = pclient->client_fd;
         pipe = ppump->inbound_pipe;
         read_eof_flag = &(pclient->client_shutdown_write);
     }
     if (direction == outbound) {
-        origin_source_fd = pclient->clientFd;
-        to_fd = pclient->relayFd;
+        origin_source_fd = pclient->client_fd;
+        to_fd = pclient->relay_fd;
         pipe = ppump->outbound_pipe;
         read_eof_flag = &(pclient->relay_shutdown_write);
     }
@@ -416,7 +416,7 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     }
     pump->outbound_pipe->capacity = (size_t) pipesz;
     // create event
-    pump->client_read_ev = event_new(penv->eventBaseLoop, pclient->clientFd, EV_READ | EV_PERSIST,
+    pump->client_read_ev = event_new(penv->eventBaseLoop, pclient->client_fd, EV_READ | EV_PERSIST,
                                      transocks_splicepump_client_readcb, pclient);
     if (pump->client_read_ev == NULL) {
         goto fail;
@@ -426,7 +426,7 @@ static int transocks_splicepump_start_pump(transocks_client *pclient) {
     if (pump->client_write_ev == NULL) {
         goto fail;
     }
-    pump->relay_read_ev = event_new(penv->eventBaseLoop, pclient->relayFd, EV_READ | EV_PERSIST,
+    pump->relay_read_ev = event_new(penv->eventBaseLoop, pclient->relay_fd, EV_READ | EV_PERSIST,
                                     transocks_splicepump_relay_readcb, pclient);
     if (pump->relay_read_ev == NULL) {
         goto fail;
