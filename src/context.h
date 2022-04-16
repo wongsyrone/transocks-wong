@@ -20,11 +20,12 @@
 #include "list.h"
 
 enum transocks_client_state {
-    client_new,
+    client_NEW,
     client_relay_connected,
     client_socks5_finish_handshake,
     client_pumping_data,
-    client_INVALID
+    client_DESTROYING,
+    client_DESTROYED
 };
 
 /* forward declaration */

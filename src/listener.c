@@ -93,7 +93,7 @@ static void listener_cb(evutil_socket_t fd, short events, void *userArg) {
 
     pclient->client_bev = client_bev;
 
-    list_add(&(pclient->single_client_dlinklist_entry), &(env->current_clients_dlinklist));
+    list_add_tail(&(pclient->single_client_dlinklist_entry), &(env->current_clients_dlinklist));
 
     // start connecting SOCKS5 relay
     transocks_start_connect_relay(pclient);

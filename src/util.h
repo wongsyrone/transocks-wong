@@ -64,18 +64,6 @@
 #define TRANSOCKS_BUFSIZE                       (4096)
 #define TRANSOCKS_IS_RETRIABLE(err)             ((err) == EAGAIN || (err) == EWOULDBLOCK || (err) == EINTR)
 
-/* Evaluate EXPRESSION, and repeat as long as it returns -1 with `errno'
-   set to EINTR.  */
-/* taken from glibc unistd.h and fixes musl */
-#ifndef TEMP_FAILURE_RETRY
-# define TEMP_FAILURE_RETRY(expression) \
-  (__extension__							      \
-    ({ long int __result;						      \
-       do __result = (long int) (expression);				      \
-       while (__result == -1L && errno == EINTR);			      \
-       __result; }))
-#endif
-
 #define TRANSOCKS_FREE(free_fn, ptr)     \
     do {                                 \
         if ((ptr) != NULL) {             \
@@ -87,12 +75,12 @@
 #define TRANSOCKS_CLOSE(fd)                 \
     do {                                    \
         if ((fd) >= 0) {                    \
-            TEMP_FAILURE_RETRY(close(fd));  \
+            close(fd);  \
             (fd) = -1;                      \
         }                                   \
     } while (0)
 
-#define TRANSOCKS_SHUTDOWN(fd, how)             TEMP_FAILURE_RETRY(shutdown(fd, how))
+#define TRANSOCKS_SHUTDOWN(fd, how)             shutdown(fd, how)
 
 #define TRANSOCKS_IS_INVALID_FD(fd) ((fd) == -1)
 

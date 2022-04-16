@@ -8,11 +8,12 @@
 #include "pump.h"
 
 static char *transocks_client_state_str[] = {
-        [client_new] = "client_new",
+        [client_NEW] = "client_NEW",
         [client_relay_connected] = "client_relay_connected",
         [client_socks5_finish_handshake] = "client_socks5_finish_handshake",
         [client_pumping_data] = "client_pumping_data",
-        [client_INVALID] = "client_INVALID"
+        [client_DESTROYING] = "client_DESTROYING",
+        [client_DESTROYED] = "client_DESTROYED"
 };
 
 /*
@@ -85,7 +86,7 @@ transocks_client *transocks_client_new(transocks_global_env *env) {
     client->client_shutdown_write = false;
     client->relay_shutdown_read = false;
     client->relay_shutdown_write = false;
-    client->client_state = client_new;
+    client->client_state = client_NEW;
 
     client->client_addr = tr_malloc(sizeof(struct sockaddr_storage));
     client->dest_addr = tr_malloc(sizeof(struct sockaddr_storage));
@@ -111,6 +112,22 @@ void transocks_client_free(transocks_client *pClient) {
 
     transocks_pump_dump_info_debug(pClient, "free a conn");
 
+    if (pClient->client_state == client_DESTROYED || pClient->client_state == client_DESTROYING) {
+        return;
+    }
+
+    pClient->client_state = client_DESTROYING;
+
+    if (pClient->client_fd >= 0) {
+        TRANSOCKS_SHUTDOWN(pClient->client_fd, SHUT_RDWR);
+    }
+    if (pClient->relay_fd >= 0) {
+        TRANSOCKS_SHUTDOWN(pClient->relay_fd, SHUT_RDWR);
+    }
+
+    TRANSOCKS_CLOSE(pClient->client_fd);
+    TRANSOCKS_CLOSE(pClient->relay_fd);
+
     if (pClient->timeout_ev != NULL) {
         evtimer_del(pClient->timeout_ev);
     }
@@ -126,24 +143,13 @@ void transocks_client_free(transocks_client *pClient) {
     TRANSOCKS_FREE(bufferevent_free, pClient->relay_bev);
     TRANSOCKS_FREE(bufferevent_free, pClient->client_bev);
 
-    if (pClient->client_state != client_new && pClient->client_state != client_INVALID) {
-        if (pClient->client_fd >= 0) {
-            TRANSOCKS_SHUTDOWN(pClient->client_fd, SHUT_RDWR);
-        }
-        if (pClient->relay_fd >= 0) {
-            TRANSOCKS_SHUTDOWN(pClient->relay_fd, SHUT_RDWR);
-        }
-    }
 
     TRANSOCKS_FREE(tr_free, pClient->client_addr);
     TRANSOCKS_FREE(tr_free, pClient->dest_addr);
 
-    pClient->client_state = client_INVALID;
-
-    TRANSOCKS_CLOSE(pClient->client_fd);
-    TRANSOCKS_CLOSE(pClient->relay_fd);
-
     list_del(&(pClient->single_client_dlinklist_entry));
+
+    pClient->client_state = client_DESTROYED;
 
     TRANSOCKS_FREE(tr_free, pClient);
 }
